@@ -14,6 +14,58 @@ import ipywidgets as widgets
 from IPython.display import display
 import warnings
 
+# # plotting parameters
+# # See: https://ianstormtaylor.com/design-tip-never-use-black/
+# # softblack = '#262626'
+softblack = 'k'  # Looks better when printed on tex file
+gray = '0.7'
+# # list(mpl.rcParams['axes.prop_cycle'])
+# mpl.rcParams['figure.dpi'] = 180
+# mpl.rcParams['font.size'] = 9
+# mpl.rcParams['text.usetex'] = True
+# mpl.rcParams['font.family'] = 'serif'
+
+# mpl.rcParams['axes.labelsize'] = 9
+# mpl.rcParams['axes.edgecolor'] = softblack
+# mpl.rcParams['axes.xmargin'] = 0
+# mpl.rcParams['axes.labelcolor'] = softblack
+# mpl.rcParams['axes.linewidth']
+
+# mpl.rcParams['ytick.direction'] = 'in'
+# mpl.rcParams['xtick.direction'] = 'in'
+# mpl.rcParams['xtick.labelsize'] = 9
+# mpl.rcParams['ytick.labelsize'] = 9
+# mpl.rcParams['xtick.color'] = softblack
+# mpl.rcParams['ytick.color'] = softblack
+# mpl.rcParams['xtick.minor.size'] = 2.4
+# mpl.rcParams['ytick.minor.size'] = 2.4
+
+# mpl.rcParams['legend.title_fontsize'] = 9
+# mpl.rcParams['legend.fontsize'] = 9
+# mpl.rcParams['legend.edgecolor'] = 'inherit'  # inherits from axes.edgecolor, to match
+# mpl.rcParams['legend.facecolor'] = (1, 1, 1, 0.6)  # Set facecolor with its own alpha, so edgecolor is unaffected
+# mpl.rcParams['legend.fancybox'] = True
+# mpl.rcParams['legend.borderaxespad'] = 0.8
+# mpl.rcParams['legend.framealpha'] = None  # Do not set overall alpha (affects edgecolor). Handled by facecolor above
+# mpl.rcParams['patch.linewidth'] = 0.8  # This is for legend edgewidth, since it does not have its own option
+
+# text_bbox = dict(boxstyle='round', fc=(1, 1, 1, 0.6), ec=softblack, lw=0.8)
+# mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, format='pdf')
+
+edgewidth = 0.6
+
+top_legend_kwargs = dict(
+    loc='lower left',
+    bbox_to_anchor=(0, 1.02, 1, 0.5), ncol=4,
+    borderpad=0.37,
+    labelspacing=0.,
+    handlelength=1.4,
+    handletextpad=0.4, borderaxespad=0,
+    edgecolor=softblack,
+    mode='expand',
+    fancybox=False
+)
+
 def scale_lightness(rgb, scale_l):
     """
     Scales the lightness of a color. Takes in a color defined in RGB, converts to HLS, lightens
@@ -371,7 +423,7 @@ class GSUMobj:
         # We must beware of numerical issues of using data that are "too close"
         trunc_gp.fit(self.X[mask], self.data[mask], orders = self.orders_array)
 
-        fig, axes = plt.subplots(math.ceil(n_orders / 2), 2, sharex = True, sharey = True, \
+        fig, axes = plt.subplots(math.ceil(self.n_orders / 2), 2, sharex = True, sharey = True, \
                                  figsize = (5, 8))
         
         for i, n in enumerate(self.orders_array):
