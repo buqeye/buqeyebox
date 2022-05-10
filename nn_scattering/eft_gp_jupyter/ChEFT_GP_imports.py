@@ -131,6 +131,16 @@ def E_to_p(E_lab, interaction):
 
 
 def Q_approx(p, Q_parametrization, Lambda_b, interaction='np', single_expansion=False):
+    """
+    Returns the dimensionless expansion parameter Q.
+    
+    Parameters
+    ----------
+    p (float or array) : momentum (in MeV)
+    Q_parametrization (str) : can be "poly", "max", or "sum"
+    Lambda_b (float) : value for the cutoff (in MeV)
+    interaction (str) : can be "np", "nn", or "pp"
+    """
     if single_expansion:
         m_pi = 0
     else:
@@ -160,7 +170,8 @@ def Q_approx(p, Q_parametrization, Lambda_b, interaction='np', single_expansion=
         return q
 
 def deg_to_qcm(p, deg):
-    """Return the center-of-momentum momentum transfer q in MeV.
+    """
+    Return the center-of-momentum momentum transfer q in MeV.
 
     Parameters
     ----------
@@ -172,7 +183,8 @@ def deg_to_qcm(p, deg):
     return p * np.sqrt( 2 * (1 - np.cos(np.radians(deg))) )
 
 def deg_to_qcm2(p, deg):
-    """Return the center-of-momentum momentum transfer q squared, in MeV^2.
+    """
+    Return the center-of-momentum momentum transfer q squared, in MeV^2.
 
     Parameters
     ----------
@@ -200,7 +212,7 @@ def softmax_mom(p, q, n = 5):
 
 class GPHyperparameters:
     def __init__(self, ls_class, center, ratio, nugget = 1e-10, seed = None, df = np.inf, \
-                 disp = 0, scale = 1):
+                 disp = 0, scale = 1, sd = None):
         """
         Class for the hyperparameters of a Gaussian process.
         """
@@ -215,9 +227,15 @@ class GPHyperparameters:
         self.df = df
         self.disp = disp
         self.scale = scale
+        self.sd = sd
         
 class FileNaming:
     def __init__(self, scheme, scale, Q_param):
+        """
+        scheme (str) : name of the scheme
+        scale (str) : name of the scale
+        Q_param (str) : name of the Q parametrization
+        """
         self.scheme = scheme
         self.scale = scale
         self.Q_param = Q_param
@@ -593,12 +611,22 @@ class LengthScale:
         bound of fitting
     whether_fit (bool) : should the fit procedure be performed?
     """
-    def __init__(self, x, ls_guess_factor, ls_bound_lower_factor, ls_bound_upper_factor, \
+    def __init__(self, ls_guess_factor, ls_bound_lower_factor, ls_bound_upper_factor, \
                  whether_fit = True):
-        self.ls_guess = (np.max(x) - np.min(x)) * ls_guess_factor
-        self.ls_bound_lower = ls_bound_lower_factor * self.ls_guess
-        self.ls_bound_upper = ls_bound_upper_factor * self.ls_guess
+        self.ls_guess_factor = ls_guess_factor
+        self.ls_bound_lower_factor = ls_bound_lower_factor
+        self.ls_bound_upper_factor = ls_bound_upper_factor
         self.whether_fit = whether_fit
+    
+    def make_guess(self, x):
+        self.ls_guess = (np.max(x) - np.min(x)) * self.ls_guess_factor
+        
+        if self.whether_fit:
+            self.ls_bound_lower = self.ls_bound_lower_factor * self.ls_guess
+            self.ls_bound_upper = self.ls_bound_upper_factor * self.ls_guess
+        else:
+            self.ls_bound_lower = self.ls_guess.copy()
+            self.ls_bound_upper = self.ls_guess.copy()
 
 class GSUMDiagnostics:
     def __init__(self, observable, Lambda_b, inputspace, traintestsplit, \
@@ -663,6 +691,7 @@ class GSUMDiagnostics:
         self.df = self.gphyperparameters.df
         self.disp = self.gphyperparameters.disp
         self.std_est = self.gphyperparameters.scale
+        self.sd = self.gphyperparameters.sd
 
         # information on the orders at which the potential is evaluated
         self.orderinfo = orderinfo
@@ -735,11 +764,12 @@ class GSUMDiagnostics:
         # print("coeffs_test = " + str(self.coeffs_test))
 
         # defines the kernel
-        if self.E_lab < 70.1:
+        if self.E_lab < 70.1 and self.E_lab >= 1.:
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
                         WhiteKernel(1e-8, noise_level_bounds = 'fixed')
         else:
+            print(self.ls, self.ls_lower, self.ls_upper)
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
                         WhiteKernel(1e-10, noise_level_bounds = 'fixed')
@@ -747,7 +777,8 @@ class GSUMDiagnostics:
         # Define the GP
         self.gp = gm.ConjugateGaussianProcess(
             self.kernel, center = self.center, disp = self.disp, df = self.df,
-            scale = self.std_est, n_restarts_optimizer = 10, random_state = self.seed)
+            scale = self.std_est, n_restarts_optimizer = 10, random_state = self.seed, 
+            sd = self.sd)
        
         self.nn_orders = self.orders_restricted
         # print("Orders are " + str(self.nn_orders))
@@ -795,40 +826,43 @@ class GSUMDiagnostics:
         ax.tick_params(which='minor', bottom=True, top=False)
         ax.set_xlabel(self.caption_coeffs)
         ax.legend(ncol=2, borderpad=0.4,# labelspacing=0.5, columnspacing=1.3,
-                  borderaxespad=0.6,
+                  borderaxespad=0.6, loc = 'upper right',
                   title = self.title_coeffs)
         
         # draws length scales
-        ax.annotate("", xy=(np.min(self.x), -0.8*2*self.underlying_std), \
+        ax.annotate("", xy=(np.min(self.x), -0.8*2*self.underlying_std), 
                     xytext=(np.min(self.x) + self.ls, -0.8*2*self.underlying_std),
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + 1.3*self.ls, -0.8*2*self.underlying_std, r'$\ell_{est}$', \
+        ax.text(np.min(self.x) + self.ls + 0.1 * (np.max(self.x) - np.min(self.x)), 
+                -0.8*2*self.underlying_std, r'$\ell_{\mathrm{guess}}$', 
                 horizontalalignment='right', verticalalignment='center', zorder = 5 * i)
 
         ax.annotate("", xy=(np.min(self.x), -0.95*2*self.underlying_std), \
                     xytext=(np.min(self.x) + self.ls_true, -0.95*2*self.underlying_std),
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + 1.3*self.ls_true, -0.95*2*self.underlying_std, \
-                r'$\ell_{fit}$', horizontalalignment='right', verticalalignment='center', zorder = 5 * i)
+        ax.text(np.min(self.x) + self.ls_true + 0.1 * (np.max(self.x) - np.min(self.x)), 
+                -0.95*2*self.underlying_std, \
+                r'$\ell_{\mathrm{fit}}$', horizontalalignment='right', verticalalignment='center', zorder = 5 * i)
         
         # draws standard deviations
-        ax.annotate("", xy=(np.min(self.x) + 0.97 * (np.max(self.x) - np.min(self.x)), 0), \
-                    xytext=(np.min(self.x) + 0.97 * (np.max(self.x) - np.min(self.x)), \
+        ax.annotate("", xy=(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), 0), \
+                    xytext=(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), \
                             -1. * self.std_est),
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + 0.97 * (np.max(self.x) - np.min(self.x)), \
-                -1.2 * self.std_est, r'$\sigma_{est}$', horizontalalignment='center', \
+        ax.text(np.min(self.x) + 0.96 * (np.max(self.x) - np.min(self.x)), \
+                -1.2 * self.std_est, r'$\sigma_{\mathrm{guess}}$', horizontalalignment='center', \
                 verticalalignment='bottom', zorder = 5 * i)
-        ax.annotate("", xy=(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), 0), \
-                    xytext=(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), \
+        ax.annotate("", xy=(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), 0), \
+                    xytext=(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), \
                             -1. * self.underlying_std),
+                        
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), \
-                -1.2 * self.underlying_std, r'$\sigma_{fit}$', horizontalalignment='center', \
+        ax.text(np.min(self.x) + 0.88 * (np.max(self.x) - np.min(self.x)), \
+                -1.2 * self.underlying_std, r'$\sigma_{\mathrm{fit}}$', horizontalalignment='center', \
                 verticalalignment='bottom', zorder = 5 * i)
         
         if 'fig' in locals():
