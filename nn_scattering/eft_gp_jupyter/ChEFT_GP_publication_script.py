@@ -234,13 +234,38 @@ traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit]
 # # gets orders for evaluation from user
 # orders_input = argv[7]
 
+def README():
+    print("Arguments for GPAnalysis():\n")
+    print("scale_scheme_bunch_array (ScaleSchemeBunch list): EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm, RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, EMN450MeV, EMN500MeV, EMN550MeV, GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm")
+    print("Default: [EKM0p9fm]\n")
+    print("observable_input (str list): \"SGT\", \"DSG\", \"AY\", \"A\", \"D\", \"AXX\", \"AYY\"")
+    print("Default: [\"DSG\"]\n")
+    print("E_input_array (int list): any integer x such that 1 <= x <= 350")
+    print("Must be [0] for SGT")
+    print("Default: [150]\n")
+    print("Q_param_method_array (str list): \"poly\", \"max\", \"cos\"")
+    print("Default: [\"poly\"]\n")
+    print("input_space_input (str list): \"Elab\", \"prel\" for SGT")
+    print("input_space_input (str list): \"deg\", \"cos\", \"qcm\", \"qcm2\" for all other observables")
+    print("Default: [\"cos\"]\n")
+    print("train_test_split_array (TrainTestSplit list): Nolowenergysplit, Yeslowenergysplit for SGT")
+    print("train_test_split_array (TrainTestSplit list): Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit for all other observables")
+    print("Default: Fullspaceanglessplit\n")
+    print("orders_input (int list, or str): 2, 3, 4, 5, 6")
+    print("May be \"all\" to evaluate all orders for all potentials")
+    print("Default: \"all\"\n")
+    print("length_scale_input (LengthScale)")
+    print("Default: LengthScale(0.25, 0.25, 4, whether_fit = True)\n")
+    print("fixed_sd (float): any positive float")
+    print("Default: None\n")
+
 def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm], 
+               observable_input = ["DSG"], 
                E_input_array = [150],
                Q_param_method_array = ["poly"], 
-               train_test_split_array = [Fullspaceanglessplit], 
-               orders_input = [0, 2, 3, 4, 5], 
-               observable_input = ["DSG"], 
                input_space_input = ["cos"], 
+               train_test_split_array = [Fullspaceanglessplit], 
+               orders_input = "all", 
                length_scale_input = LengthScale(0.25, 0.25, 4, whether_fit = True),
                fixed_sd = None):
     try:
@@ -299,7 +324,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
             #     # print(orders_input_array)
                 
             # turns the string argument for orders into an array for orders
-            if orders_input == ["all"]:
+            if orders_input == "all":
                 orders_input_array = scalescheme.orders_full
             else:
                 orders_input_array = orders_input.copy()
