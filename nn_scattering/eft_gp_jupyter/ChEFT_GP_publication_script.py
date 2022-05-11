@@ -234,30 +234,30 @@ traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit]
 # # gets orders for evaluation from user
 # orders_input = argv[7]
 
-def README():
-    print("Arguments for GPAnalysis():\n")
-    print("scale_scheme_bunch_array (ScaleSchemeBunch list): EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm, RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, EMN450MeV, EMN500MeV, EMN550MeV, GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm")
-    print("Default: [EKM0p9fm]\n")
-    print("observable_input (str list): \"SGT\", \"DSG\", \"AY\", \"A\", \"D\", \"AXX\", \"AYY\"")
-    print("Default: [\"DSG\"]\n")
-    print("E_input_array (int list): any integer x such that 1 <= x <= 350")
-    print("Must be [0] for SGT")
-    print("Default: [150]\n")
-    print("Q_param_method_array (str list): \"poly\", \"max\", \"cos\"")
-    print("Default: [\"poly\"]\n")
-    print("input_space_input (str list): \"Elab\", \"prel\" for SGT")
-    print("input_space_input (str list): \"deg\", \"cos\", \"qcm\", \"qcm2\" for all other observables")
-    print("Default: [\"cos\"]\n")
-    print("train_test_split_array (TrainTestSplit list): Nolowenergysplit, Yeslowenergysplit for SGT")
-    print("train_test_split_array (TrainTestSplit list): Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit for all other observables")
-    print("Default: Fullspaceanglessplit\n")
-    print("orders_input (int list, or str): 2, 3, 4, 5, 6")
-    print("May be \"all\" to evaluate all orders for all potentials")
-    print("Default: \"all\"\n")
-    print("length_scale_input (LengthScale)")
-    print("Default: LengthScale(0.25, 0.25, 4, whether_fit = True)\n")
-    print("fixed_sd (float): any positive float")
-    print("Default: None\n")
+# def README():
+#     print("Arguments for GPAnalysis():\n")
+#     print("scale_scheme_bunch_array (ScaleSchemeBunch list): EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm, RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, EMN450MeV, EMN500MeV, EMN550MeV, GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm")
+#     print("Default: [EKM0p9fm]\n")
+#     print("observable_input (str list): \"SGT\", \"DSG\", \"AY\", \"A\", \"D\", \"AXX\", \"AYY\"")
+#     print("Default: [\"DSG\"]\n")
+#     print("E_input_array (int list): any integer x such that 1 <= x <= 350")
+#     print("Must be [0] for SGT")
+#     print("Default: [150]\n")
+#     print("Q_param_method_array (str list): \"poly\", \"max\", \"cos\"")
+#     print("Default: [\"poly\"]\n")
+#     print("input_space_input (str list): \"Elab\", \"prel\" for SGT")
+#     print("input_space_input (str list): \"deg\", \"cos\", \"qcm\", \"qcm2\" for all other observables")
+#     print("Default: [\"cos\"]\n")
+#     print("train_test_split_array (TrainTestSplit list): Nolowenergysplit, Yeslowenergysplit for SGT")
+#     print("train_test_split_array (TrainTestSplit list): Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit for all other observables")
+#     print("Default: Fullspaceanglessplit\n")
+#     print("orders_input (int list, or str): 2, 3, 4, 5, 6")
+#     print("May be \"all\" to evaluate all orders for all potentials")
+#     print("Default: \"all\"\n")
+#     print("length_scale_input (LengthScale)")
+#     print("Default: LengthScale(0.25, 0.25, 4, whether_fit = True)\n")
+#     print("fixed_sd (float): any positive float")
+#     print("Default: None\n")
 
 def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm], 
                observable_input = ["DSG"], 
@@ -267,7 +267,72 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                train_test_split_array = [Fullspaceanglessplit], 
                orders_input = "all", 
                length_scale_input = LengthScale(0.25, 0.25, 4, whether_fit = True),
-               fixed_sd = None):
+               fixed_sd = None, 
+               print_all = False):
+    """
+    scale_scheme_bunch_array (ScaleSchemeBunch list): potential/cutoff 
+        combinations for evaluation.
+    Built-in options: 
+        EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm 
+        ( https://doi.org/10.1140/epja/i2015-15053-8 );
+        RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV 
+        ( https://doi.org/10.1140/epja/i2018-12516-4 );
+        EMN450MeV, EMN500MeV, EMN550MeV 
+        ( https://doi.org/10.1103/PhysRevC.96.024004 );
+        GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm 
+        ( https://doi.org/10.1103/PhysRevC.90.054323 )
+    Default: [EKM0p9fm]
+
+    observable_input (str list): observables for evaluation. Note that SGT 
+        should not be in the same list as other observables.
+    Built-in options: "SGT", "DSG", "AY", "A", "D", "AXX", "AYY"
+    Default: ["DSG"]
+
+    E_input_array (int list): energies for evaluation. Note that SGT must be 
+        treated differently since it is not evaluated at one energy at a time.
+    May be any integer x such that 1 <= x <= 350
+    Must be [0] for SGT
+    Default: [150]
+
+    Q_param_method_array (str list): methods of parametrizing the dimensionless 
+        expansion parameter Q for evaluation.
+    Built-in options: "poly", "max", "cos"
+    Default: ["poly"]
+
+    input_space_input (str list): input spaces for evaluation. Note that SGT 
+        must be treated differently since it is not evaluated at one energy at 
+        a time.
+    Built-in options: "Elab", "prel" for SGT
+    Built-in options: "deg", "cos", "qcm", "qcm2" for all other observables
+    Default: ["cos"]
+
+    train_test_split_array (TrainTestSplit list): splits of training and 
+        testing points for evaluation. Note that SGT must be treated 
+        differently since it is not evaluated at one energy at a time.
+    Built-in options: Nolowenergysplit, Yeslowenergysplit for SGT
+    Built-in options: Fullspaceanglessplit, Forwardanglessplit, 
+        Backwardanglessplit for all other observables
+    Default: Fullspaceanglessplit
+
+    orders_input (int list, or str if "all"): orders for evaluation. May be 
+        any list containing 2, 3, 4, 5, 6 in any order. May be "all" to 
+        evaluate all orders for all potentials.
+    Built-in options: [0, 2, 3, 4, 5] for EKM; [0, 2, 3, 4, 5, 6] for RKE; 
+        [0, 2, 3, 4, 5] for EMN; [0, 2, 3] for GT+.
+    Default: "all"
+
+    length_scale_input (LengthScale): initial guess for the correlation 
+        length in the kernel (as a factor of the total size of the input space) 
+        plus boundaries of the fit procedure as factors of the initial guess 
+        for the correlation length. Fitting may be bypassed when whether_fit = 
+        False.
+    Default: LengthScale(0.25, 0.25, 4, whether_fit = True)
+
+    fixed_sd (float): fixed standard deviation for the Gaussian process fit. 
+        May be any positive float. If None, then there is no fixed standard 
+        deviation and it is calculated by the fitting procedure.
+    Default: None
+    """
     try:
     # runs through the potentials
         for o, scalescheme in enumerate(scale_scheme_bunch_array):
@@ -327,7 +392,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
             if orders_input == "all":
                 orders_input_array = scalescheme.orders_full
             else:
-                orders_input_array = orders_input.copy()
+                orders_input_array = (orders_input.copy()).sort()
                 
             # turns the array for orders into an array for colors
             colors_index_array = orders_input_array.copy()

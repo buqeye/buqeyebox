@@ -742,8 +742,6 @@ class GSUMDiagnostics:
             self.ref_train = f(self.x_train)
             self.ref_test = f(self.x_test)
 
-        print("Data has shape " + str(self.data.shape))
-        print("Orders has shape " + str(self.nn_orders))
         # Extract the coefficients and define kernel
         self.coeffs = gm.coefficients(self.data, ratio = self.ratio, \
                             ref = self.ref, orders = self.nn_orders)[:, self.nn_orders_mask]
@@ -769,7 +767,6 @@ class GSUMDiagnostics:
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
                         WhiteKernel(1e-8, noise_level_bounds = 'fixed')
         else:
-            print(self.ls, self.ls_lower, self.ls_upper)
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
                         WhiteKernel(1e-10, noise_level_bounds = 'fixed')
