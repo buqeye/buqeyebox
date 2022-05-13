@@ -11,6 +11,7 @@ import numpy as np
 # from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 # import math
 # import re
+import gc
 from ChEFT_GP_imports import joint_plot, offset_xlabel, m_p, m_n, hbarc, E_to_p, Q_approx, \
 deg_to_qcm, deg_to_qcm2, softmax_mom, GPHyperparameters, FileNaming, PosteriorBounds, \
 OrderInfo, versatile_train_test_split, InputSpaceBunch, \
@@ -266,7 +267,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                input_space_input = ["cos"], 
                train_test_split_array = [Fullspaceanglessplit], 
                orders_input = "all", 
-               length_scale_input = LengthScale(0.25, 0.25, 4, whether_fit = True),
+               length_scale_input = LengthScale("1/16-1_fitted", 0.25, 0.25, 4, whether_fit = True),
                fixed_sd = None, 
                print_all = False):
     """
@@ -538,3 +539,33 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 MyPlot.Plotzilla()
     except:
         pass
+    
+    # prints all instances of the classes relevant for the arguments of 
+    # GPAnalysis()
+    if print_all:
+        scalescheme_current_list = []
+        observable_current_list = []
+        inputspace_current_list = []
+        traintest_current_list = []
+        lengthscale_current_list = []
+        
+        for obj in gc.get_objects():
+            if isinstance(obj, ScaleSchemeBunch):
+                scalescheme_current_list.append(obj.name)
+            elif isinstance(obj, ObservableBunch):
+                observable_current_list.append(obj.name)
+            elif isinstance(obj, InputSpaceBunch):
+                inputspace_current_list.append(obj.name)
+            elif isinstance(obj, TrainTestSplit):
+                traintest_current_list.append(obj.name)
+            elif isinstance(obj, LengthScale):
+                lengthscale_current_list.append(obj.name)
+        
+        print("\n\n************************************")
+        print("Available potentials: " + str(scalescheme_current_list))
+        print("Available observables: " + str(observable_current_list))
+        print("Available Q parametrizations: ['poly', 'max', 'sum']")
+        print("Available input spaces: " + str(inputspace_current_list))
+        print("Available train/test splits: " + str(traintest_current_list))
+        print("Available length scales: " + str(lengthscale_current_list))
+        print("************************************")

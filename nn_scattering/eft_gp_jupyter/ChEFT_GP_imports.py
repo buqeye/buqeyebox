@@ -171,7 +171,7 @@ def Q_approx(p, Q_parametrization, Lambda_b, interaction='np', single_expansion=
 
 def deg_to_qcm(p, deg):
     """
-    Return the center-of-momentum momentum transfer q in MeV.
+    Returns the center-of-momentum momentum transfer q in MeV.
 
     Parameters
     ----------
@@ -184,7 +184,7 @@ def deg_to_qcm(p, deg):
 
 def deg_to_qcm2(p, deg):
     """
-    Return the center-of-momentum momentum transfer q squared, in MeV^2.
+    Returns the center-of-momentum momentum transfer q squared, in MeV^2.
 
     Parameters
     ----------
@@ -583,6 +583,7 @@ class ScaleSchemeBunch:
         self.cmaps = cmaps
         self.potential_string = potential_string
         self.cutoff_string = cutoff_string
+        self.name = self.potential_string + self.cutoff_string
         
         self.colors = [cmap(0.55 - 0.1 * (i==0)) for i, cmap in enumerate(self.cmaps)]
         self.light_colors = [cmap(0.25) for cmap in self.cmaps]
@@ -611,8 +612,9 @@ class LengthScale:
         bound of fitting
     whether_fit (bool) : should the fit procedure be performed?
     """
-    def __init__(self, ls_guess_factor, ls_bound_lower_factor, ls_bound_upper_factor, \
-                 whether_fit = True):
+    def __init__(self, name ,ls_guess_factor, ls_bound_lower_factor, 
+                 ls_bound_upper_factor, whether_fit = True):
+        self.name = name
         self.ls_guess_factor = ls_guess_factor
         self.ls_bound_lower_factor = ls_bound_lower_factor
         self.ls_bound_upper_factor = ls_bound_upper_factor
