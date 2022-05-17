@@ -826,7 +826,7 @@ class GSUMDiagnostics:
         ax.set_xlabel(self.caption_coeffs)
         ax.legend(ncol=2, borderpad=0.4,# labelspacing=0.5, columnspacing=1.3,
                   borderaxespad=0.6, loc = 'upper right',
-                  title = self.title_coeffs)
+                  title = self.title_coeffs).set_zorder(5 * i)
         
         # draws length scales
         ax.annotate("", xy=(np.min(self.x), -0.8*2*self.underlying_std), 
@@ -867,11 +867,11 @@ class GSUMDiagnostics:
         if 'fig' in locals():
             fig.tight_layout()
     
-            fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
+            fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
                     '_' + 'interp_and_underlying_processes' + '_' + str(self.E_lab) + 'MeVlab' + \
                     '_' + self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                    self.train_pts_loc)
+                    self.train_pts_loc).replace('_0MeVlab_', '_'))
 
     def PlotMD(self, ax = None):
         try:
@@ -895,14 +895,14 @@ class GSUMDiagnostics:
             if 'fig' in locals():
                 fig.tight_layout();
             
-                fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
                         '_' + 'md' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc)
+                        self.train_pts_loc).replace('_0MeVlab_', '_'))
             
         except:
-            return 0
+            print("Error in calculating or plotting the Mahalanobis distance.")
 
     def PlotPC(self, ax = None):
         try:
@@ -928,14 +928,14 @@ class GSUMDiagnostics:
                 if 'fig' in locals():
                     fig.tight_layout()
                     
-                    fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
+                    fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
                             '_' + 'pc_vs_index' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                            self.train_pts_loc)
+                            self.train_pts_loc).replace('_0MeVlab_', '_'))
     
         except:
-            return 0
+            print("Error in calculating or plotting the pivoted Cholesky decomposition.")
 
 #     def PlotPosteriorPDF(self, posteriorgrid):
 #         try:
@@ -1164,14 +1164,14 @@ class GSUMDiagnostics:
             if 'fig' in locals():
                 fig.tight_layout()
         
-                fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + str(self.E_lab) + 'MeVlab' + \
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + str(self.E_lab) + 'MeVlab' + \
                         '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
                             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc)
+                        self.train_pts_loc).replace('_0MeVlab_', '_'))
         
         except:
-            return 0
+            print("Error in plotting the credible intervals.")
 
     def Plotzilla(self):
         # using gridspec, plots the Mahalanobis distance, coefficient curves, credible 
@@ -1188,27 +1188,27 @@ class GSUMDiagnostics:
         try:
             self.PlotMD(ax = ax_md)
         except:
-            pass
+            print("Error in calculating or plotting the Mahalanobis distance.")
         try:
             self.PlotCoefficients(ax = ax_coeff)
         except:
-            pass
+            print("Error in calculating or plotting the coefficient curves.")
         try:
             self.PlotCredibleIntervals(ax = ax_ci)
         except:
-            pass
+            print("Error in calculating or plotting the credible intervals.")
         try:
             self.PlotPC(ax = ax_pc)
         except:
-            pass
+            print("Error in calculating or plotting the pivoted Cholesky decomposition.")
         
         # adds a title
         fig_main.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.E_lab) + '\,MeV)\,' + \
                         '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
                         '}},\,\mathrm{' + self.vs_what + '})$', size = 20)
         
-        fig_main.savefig('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
+        fig_main.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
                         '_' + 'plotzilla' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc)
+                        self.train_pts_loc).replace('_0MeVlab_', '_'))

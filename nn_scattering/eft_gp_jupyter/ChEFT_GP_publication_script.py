@@ -335,18 +335,22 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
     Default: None
     """
     try:
-    # runs through the potentials
+        # runs through the potentials
         for o, scalescheme in enumerate(scale_scheme_bunch_array):
-            # gets observable data from a file in the same folder
-            SGT = scalescheme.get_data('SGT')
-            DSG = scalescheme.get_data('DSG')
-            AY = scalescheme.get_data('PB')
-            A = scalescheme.get_data('A')
-            D = scalescheme.get_data('D')
-            AXX = scalescheme.get_data('AXX')
-            AYY = scalescheme.get_data('AYY')
-            t_lab = scalescheme.get_data('t_lab')
-            degrees = scalescheme.get_data('degrees')
+            # gets observable data from a local file
+            # default location is the same as this program's
+            try:
+                SGT = scalescheme.get_data('SGT')
+                DSG = scalescheme.get_data('DSG')
+                AY = scalescheme.get_data('PB')
+                A = scalescheme.get_data('A')
+                D = scalescheme.get_data('D')
+                AXX = scalescheme.get_data('AXX')
+                AYY = scalescheme.get_data('AYY')
+                t_lab = scalescheme.get_data('t_lab')
+                degrees = scalescheme.get_data('degrees')
+            except:
+                raise Exception("Data could not be found in the location specified.")
             
             # creates the bunch for each observable to be plotted against angle
             SGTBunch = ObservableBunch("SGT", SGT, E_input_array, '\sigma_{\mathrm{tot}}', \
@@ -538,7 +542,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 #     MyPlot.PlotPosteriorPDF(PosteriorBounds_cos)
                                 MyPlot.Plotzilla()
     except:
-        pass
+        print("Error encountered in running loop.")
     
     # prints all instances of the classes relevant for the arguments of 
     # GPAnalysis()
