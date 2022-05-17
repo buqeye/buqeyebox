@@ -577,13 +577,17 @@ class TrainTestSplit:
         return self.x_train, self.x_test, self.y_train, self.y_test
 
 class ScaleSchemeBunch:
-    def __init__(self, url, orders_full, cmaps, potential_string, cutoff_string):
-        self.url = url
+    def __init__(self, file_name, orders_full, cmaps, potential_string, cutoff_string, 
+                 dir_path = "./"):
+        self.file_name = file_name
         self.orders_full  = orders_full
         self.cmaps = cmaps
         self.potential_string = potential_string
         self.cutoff_string = cutoff_string
         self.name = self.potential_string + self.cutoff_string
+        self.dir_path = dir_path
+        
+        self.full_path = self.dir_path + self.file_name
         
         self.colors = [cmap(0.55 - 0.1 * (i==0)) for i, cmap in enumerate(self.cmaps)]
         self.light_colors = [cmap(0.25) for cmap in self.cmaps]
@@ -594,7 +598,7 @@ class ScaleSchemeBunch:
         #                   driver_core_image=response.read(),
         #                   driver_core_backing_store=0)
         # obs_data = h5file.get_node('/' + observable_string).read()
-        response = h5py.File(self.url, "r")
+        response = h5py.File(self.full_path, "r")
         obs_data = np.array(response[observable_string][:])
         response.close()
         return obs_data
@@ -792,7 +796,19 @@ class GSUMDiagnostics:
         self.coeffs_train = (self.coeffs_train.T[self.mask_restricted]).T
         self.coeffs_test = (self.coeffs_test.T[self.mask_restricted]).T
 
-    def PlotCoefficients(self, ax = None):
+    def PlotCoefficients(self, ax = None, whether_save = True):
+        """
+        Parameters
+        ----------
+        ax : Axes, optional
+            Axes object for plotting. The default is None.
+        whether_save : bool, optional
+            Whether to save the figure. The default is True.
+
+        Returns
+        -------
+        Figure with plot.
+        """
         # optimizes the ConjugateGaussianProcess for the given parameters and extracts the 
         # length scale
         self.gp.fit(self.X_train, self.coeffs_train)
@@ -864,7 +880,7 @@ class GSUMDiagnostics:
                 -1.2 * self.underlying_std, r'$\sigma_{\mathrm{fit}}$', horizontalalignment='center', \
                 verticalalignment='bottom', zorder = 5 * i)
         
-        if 'fig' in locals():
+        if 'fig' in locals() and whether_save:
             fig.tight_layout()
     
             fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
@@ -873,7 +889,19 @@ class GSUMDiagnostics:
                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
                     self.train_pts_loc).replace('_0MeVlab_', '_'))
 
-    def PlotMD(self, ax = None):
+    def PlotMD(self, ax = None, whether_save = True):
+        """
+        Parameters
+        ----------
+        ax : Axes, optional
+            Axes object for plotting. The default is None.
+        whether_save : bool, optional
+            Whether to save the figure. The default is True.
+
+        Returns
+        -------
+        Figure with plot.
+        """
         try:
             # calculates and plots the squared Mahalanobis distance
             self.gp.kernel_
@@ -892,7 +920,7 @@ class GSUMDiagnostics:
             offset_xlabel(ax)
             # ax.set_ylim(0, 100)
             
-            if 'fig' in locals():
+            if 'fig' in locals() and whether_save:
                 fig.tight_layout();
             
                 fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
@@ -904,7 +932,19 @@ class GSUMDiagnostics:
         except:
             print("Error in calculating or plotting the Mahalanobis distance.")
 
-    def PlotPC(self, ax = None):
+    def PlotPC(self, ax = None, whether_save = True):
+        """
+        Parameters
+        ----------
+        ax : Axes, optional
+            Axes object for plotting. The default is None.
+        whether_save : bool, optional
+            Whether to save the figure. The default is True.
+
+        Returns
+        -------
+        Figure with plot.
+        """
         try:
             # calculates and plots the pivoted Cholesky decomposition
             self.gp.kernel_
@@ -925,7 +965,7 @@ class GSUMDiagnostics:
                         transform = ax.transAxes, va='top', ha='left')
                 ax.set_ylim(-6, 6)
                 
-                if 'fig' in locals():
+                if 'fig' in locals() and whether_save:
                     fig.tight_layout()
                     
                     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
@@ -1138,7 +1178,19 @@ class GSUMDiagnostics:
 #                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
 #                     self.train_pts_loc)
 
-    def PlotCredibleIntervals(self, ax = None):
+    def PlotCredibleIntervals(self, ax = None, whether_save = True):
+        """
+        Parameters
+        ----------
+        ax : Axes, optional
+            Axes object for plotting. The default is None.
+        whether_save : bool, optional
+            Whether to save the figure. The default is True.
+
+        Returns
+        -------
+        Figure with plot.
+        """
         try:
             # calculates and plots credible intervals ("weather plots")
             self.gp.kernel_
@@ -1161,7 +1213,7 @@ class GSUMDiagnostics:
             ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
             ax.set_yticklabels([0, 20, 40, 60, 80, 100])
             
-            if 'fig' in locals():
+            if 'fig' in locals() and whether_save:
                 fig.tight_layout()
         
                 fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + str(self.E_lab) + 'MeVlab' + \
@@ -1173,7 +1225,17 @@ class GSUMDiagnostics:
         except:
             print("Error in plotting the credible intervals.")
 
-    def Plotzilla(self):
+    def Plotzilla(self, whether_save = True):
+        """
+        Parameters
+        ----------
+        whether_save : bool, optional
+            Whether to save the figure. The default is True.
+
+        Returns
+        -------
+        Figure with plot.
+        """
         # using gridspec, plots the Mahalanobis distance, coefficient curves, credible 
         # intervals, and pivoted Cholesky on one figure
         fig_main = plt.figure(figsize=(8, 8))
@@ -1186,19 +1248,19 @@ class GSUMDiagnostics:
         ax_pc = fig_main.add_subplot(gs[3])
         
         try:
-            self.PlotMD(ax = ax_md)
+            self.PlotMD(ax = ax_md, whether_save = False)
         except:
             print("Error in calculating or plotting the Mahalanobis distance.")
         try:
-            self.PlotCoefficients(ax = ax_coeff)
+            self.PlotCoefficients(ax = ax_coeff, whether_save = False)
         except:
             print("Error in calculating or plotting the coefficient curves.")
         try:
-            self.PlotCredibleIntervals(ax = ax_ci)
+            self.PlotCredibleIntervals(ax = ax_ci, whether_save = False)
         except:
             print("Error in calculating or plotting the credible intervals.")
         try:
-            self.PlotPC(ax = ax_pc)
+            self.PlotPC(ax = ax_pc, whether_save = False)
         except:
             print("Error in calculating or plotting the pivoted Cholesky decomposition.")
         
@@ -1207,7 +1269,8 @@ class GSUMDiagnostics:
                         '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
                         '}},\,\mathrm{' + self.vs_what + '})$', size = 20)
         
-        fig_main.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
+        if whether_save:
+            fig_main.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
                         '_' + 'plotzilla' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \

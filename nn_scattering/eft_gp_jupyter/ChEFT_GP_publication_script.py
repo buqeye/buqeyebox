@@ -269,7 +269,13 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                orders_input = "all", 
                length_scale_input = LengthScale("1/16-1_fitted", 0.25, 0.25, 4, whether_fit = True),
                fixed_sd = None, 
-               print_all = False):
+               print_all_classes = False, 
+               savefile_type = 'pdf', 
+               save_coeffs_bool = True, 
+               save_md_bool = True, 
+               save_pc_bool = True, 
+               save_ci_bool = True, 
+               save_plotzilla_bool = True):
     """
     scale_scheme_bunch_array (ScaleSchemeBunch list): potential/cutoff 
         combinations for evaluation.
@@ -333,7 +339,13 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
         May be any positive float. If None, then there is no fixed standard 
         deviation and it is calculated by the fitting procedure.
     Default: None
+    
+    savefile_type (str): string for specifying the type of file to be saved.
+    Default: 'png'
     """
+    mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, 
+           format=savefile_type)
+    
     try:
         # runs through the potentials
         for o, scalescheme in enumerate(scale_scheme_bunch_array):
@@ -532,21 +544,21 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                         E_lab = E_lab, E_lab_x = t_lab, constrained = False)
             
                                 # plots figures
-                                MyPlot.PlotCoefficients()
-                                MyPlot.PlotMD()
-                                MyPlot.PlotPC()
-                                MyPlot.PlotCredibleIntervals()
+                                MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
+                                MyPlot.PlotMD(whether_save = save_md_bool)
+                                MyPlot.PlotPC(whether_save = save_pc_bool)
+                                MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
                                 # if vs_quantity.name == "deg":
                                 #     MyPlot.PlotPosteriorPDF(PosteriorBounds_deg)
                                 # elif vs_quantity.name == "cos":
                                 #     MyPlot.PlotPosteriorPDF(PosteriorBounds_cos)
-                                MyPlot.Plotzilla()
+                                MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
     except:
         print("Error encountered in running loop.")
     
     # prints all instances of the classes relevant for the arguments of 
     # GPAnalysis()
-    if print_all:
+    if print_all_classes:
         scalescheme_current_list = []
         observable_current_list = []
         inputspace_current_list = []
