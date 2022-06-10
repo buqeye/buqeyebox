@@ -230,15 +230,17 @@ class GPHyperparameters:
         self.sd = sd
         
 class FileNaming:
-    def __init__(self, scheme, scale, Q_param):
+    def __init__(self, scheme, scale, Q_param, filename_addendum = ""):
         """
         scheme (str) : name of the scheme
         scale (str) : name of the scale
         Q_param (str) : name of the Q parametrization
+        Q_param (str) : optional extra string
         """
         self.scheme = scheme
         self.scale = scale
         self.Q_param = Q_param
+        self.filename_addendum = filename_addendum
 
 def find_nearest_val(array, value):
     """
@@ -713,6 +715,7 @@ class GSUMDiagnostics:
         self.scheme = self.filenaming.scheme
         self.scale = self.filenaming.scale
         self.Q_param = self.filenaming.Q_param
+        self.filename_addendum = self.filenaming.filename_addendum
         
         if self.E_lab == 0:
             self.X_train = self.x_train[:, None]
@@ -821,21 +824,22 @@ class GSUMDiagnostics:
         # plots the coefficients against the given input space
         if ax is None:
             fig, ax = plt.subplots(figsize=(3.2, 3.2))
-            
+        
         for i, n in enumerate(self.nn_orders[1:]):
             ax.fill_between(self.x, self.pred[:, i] + 2*self.std, \
                             self.pred[:, i] - 2*self.std, \
                             facecolor = self.light_colors[i], edgecolor = self.colors[i], \
                             lw = edgewidth, alpha=1, zorder = 5 * i - 4)
-            ax.plot(self.x, self.pred[:, i], c = self.colors[i], ls='--', zorder = 5 * i - 3)
-            ax.plot(self.x, self.coeffs[:, i], c = self.colors[i], zorder = 5 * i - 2)
-            ax.plot(self.x_train, self.coeffs_train[:, i], c = self.colors[i], \
+            ax.plot(self.x, self.pred[:, i], color = self.colors[i], ls='--', zorder = 5 * i - 3)
+            ax.plot(self.x, self.coeffs[:, i], color = self.colors[i], zorder = 5 * i - 2)
+            ax.plot(self.x_train, self.coeffs_train[:, i], color = self.colors[i], \
                     ls='', marker='o', label=r'$c_{}$'.format(n), zorder = 5 * i - 1)
 
         # Format
-        ax.axhline(2*self.underlying_std, 0, 1, c=gray, zorder=-10, lw=1)
-        ax.axhline(-2*self.underlying_std, 0, 1, c=gray, zorder=-10, lw=1)
-        ax.axhline(0, 0, 1, c=softblack, zorder=-10, lw=1)
+        
+        ax.axhline(2*self.underlying_std, 0, 1, color = gray, zorder=-10, lw=1)
+        ax.axhline(-2*self.underlying_std, 0, 1, color = gray, zorder=-10, lw=1)
+        ax.axhline(0, 0, 1, color = softblack, zorder=-10, lw=1)
         ax.set_xticks(self.x_test, minor=True)
         ax.set_xticks(self.x_train)
         ax.tick_params(which='minor', bottom=True, top=False)
@@ -843,6 +847,7 @@ class GSUMDiagnostics:
         ax.legend(ncol=2, borderpad=0.4,# labelspacing=0.5, columnspacing=1.3,
                   borderaxespad=0.6, loc = 'upper right',
                   title = self.title_coeffs).set_zorder(5 * i)
+        
         
         # draws length scales
         ax.annotate("", xy=(np.min(self.x), -0.8*2*self.underlying_std), 
@@ -887,7 +892,7 @@ class GSUMDiagnostics:
                     '_' + 'interp_and_underlying_processes' + '_' + str(self.E_lab) + 'MeVlab' + \
                     '_' + self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                    self.train_pts_loc).replace('_0MeVlab_', '_'))
+                    self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
 
     def PlotMD(self, ax = None, whether_save = True):
         """
@@ -927,7 +932,7 @@ class GSUMDiagnostics:
                         '_' + 'md' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
             
         except:
             print("Error in calculating or plotting the Mahalanobis distance.")
@@ -972,7 +977,7 @@ class GSUMDiagnostics:
                             '_' + 'pc_vs_index' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                            self.train_pts_loc).replace('_0MeVlab_', '_'))
+                            self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
     
         except:
             print("Error in calculating or plotting the pivoted Cholesky decomposition.")
@@ -1054,7 +1059,7 @@ class GSUMDiagnostics:
 #                             'Lambda_ell_jointplot' + '_' + self.observable_name + '_' + str(self.t_lab_dsg) + 'MeVlab' + '_' + \
 #                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
 #                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-#                             self.train_pts_loc)
+#                             self.train_pts_loc + '_' + self.filename_addendum)
         
 #         except:
 #             return 0
@@ -1176,7 +1181,7 @@ class GSUMDiagnostics:
 #                     'spin_obs_A_full_pred_constrained' + '_' + str(self.t_lab_dsg) + 'MeVlab' + '_' + \
 #                     self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
 #                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-#                     self.train_pts_loc)
+#                     self.train_pts_loc + '_' + self.filename_addendum)
 
     def PlotCredibleIntervals(self, ax = None, whether_save = True):
         """
@@ -1220,7 +1225,7 @@ class GSUMDiagnostics:
                         '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
                             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
         
         except:
             print("Error in plotting the credible intervals.")
@@ -1248,21 +1253,21 @@ class GSUMDiagnostics:
         ax_pc = fig_main.add_subplot(gs[3])
         
         try:
-            self.PlotMD(ax = ax_md, whether_save = False)
-        except:
-            print("Error in calculating or plotting the Mahalanobis distance.")
-        try:
-            self.PlotCoefficients(ax = ax_coeff, whether_save = False)
+            self.PlotCoefficients(ax = ax_coeff, whether_save = True)
         except:
             print("Error in calculating or plotting the coefficient curves.")
         try:
-            self.PlotCredibleIntervals(ax = ax_ci, whether_save = False)
+            self.PlotMD(ax = ax_md, whether_save = True)
         except:
-            print("Error in calculating or plotting the credible intervals.")
+            print("Error in calculating or plotting the Mahalanobis distance.")
         try:
-            self.PlotPC(ax = ax_pc, whether_save = False)
+            self.PlotPC(ax = ax_pc, whether_save = True)
         except:
             print("Error in calculating or plotting the pivoted Cholesky decomposition.")
+        try:
+            self.PlotCredibleIntervals(ax = ax_ci, whether_save = True)
+        except:
+            print("Error in calculating or plotting the credible intervals.")
         
         # adds a title
         fig_main.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.E_lab) + '\,MeV)\,' + \
@@ -1274,4 +1279,4 @@ class GSUMDiagnostics:
                         '_' + 'plotzilla' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))

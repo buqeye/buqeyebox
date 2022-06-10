@@ -17,6 +17,7 @@ deg_to_qcm, deg_to_qcm2, softmax_mom, GPHyperparameters, FileNaming, PosteriorBo
 OrderInfo, versatile_train_test_split, InputSpaceBunch, \
 ObservableBunch, Interpolation, TrainTestSplit, ScaleSchemeBunch, LengthScale, \
 GSUMDiagnostics
+import copy as cp
 # import urllib
 # import tables
 
@@ -271,11 +272,17 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                fixed_sd = None, 
                print_all_classes = False, 
                savefile_type = 'pdf', 
+               plot_coeffs_bool = True, 
+               plot_md_bool = True, 
+               plot_pc_bool = True, 
+               plot_ci_bool = True, 
+               plot_plotzilla_bool = True, 
                save_coeffs_bool = True, 
                save_md_bool = True, 
                save_pc_bool = True, 
                save_ci_bool = True, 
-               save_plotzilla_bool = True):
+               save_plotzilla_bool = True, 
+               filename_addendum = ""):
     """
     scale_scheme_bunch_array (ScaleSchemeBunch list): potential/cutoff 
         combinations for evaluation.
@@ -342,6 +349,10 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
     
     savefile_type (str): string for specifying the type of file to be saved.
     Default: 'png'
+    
+    filename_addendum (str): string for distinguishing otherwise similarly named
+        files.
+    Default: ''
     """
     mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, 
            format=savefile_type)
@@ -409,7 +420,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
             if orders_input == "all":
                 orders_input_array = scalescheme.orders_full
             else:
-                orders_input_array = (orders_input.copy()).sort()
+                orders_input_array = orders_input.copy()
+                orders_input_array.sort()
                 
             # turns the array for orders into an array for colors
             colors_index_array = orders_input_array.copy()
@@ -530,29 +542,35 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
             
                                 # information for naming the savefiles
                                 FileName_DSG = FileNaming(scalescheme.potential_string, \
-                                                scalescheme.cutoff_string, Q_param_method)
+                                                scalescheme.cutoff_string, Q_param_method, 
+                                                filename_addendum = filename_addendum)
             
                                 # information on the orders for each potential
                                 Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, \
                                                 scalescheme.colors, scalescheme.light_colors, \
                                                 orders_restricted = orders_input_array, \
                                                 mask_restricted = mask_orders)
-            
+                                
                                 # creates the object used to generate and plot statistical diagnostics
                                 MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, \
                                         traintestsplit, GPHyper_DSG, Orders_DSG, FileName_DSG, \
                                         E_lab = E_lab, E_lab_x = t_lab, constrained = False)
-            
+                                
                                 # plots figures
-                                MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
-                                MyPlot.PlotMD(whether_save = save_md_bool)
-                                MyPlot.PlotPC(whether_save = save_pc_bool)
-                                MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
+                                if plot_coeffs_bool:
+                                    MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
+                                if plot_md_bool:
+                                    MyPlot.PlotMD(whether_save = save_md_bool)
+                                if plot_pc_bool:
+                                    MyPlot.PlotPC(whether_save = save_pc_bool)
+                                if plot_ci_bool:
+                                    MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
                                 # if vs_quantity.name == "deg":
                                 #     MyPlot.PlotPosteriorPDF(PosteriorBounds_deg)
                                 # elif vs_quantity.name == "cos":
                                 #     MyPlot.PlotPosteriorPDF(PosteriorBounds_cos)
-                                MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
+                                if plot_plotzilla_bool:
+                                    MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
     except:
         print("Error encountered in running loop.")
     
