@@ -454,10 +454,11 @@ class ObservableBunch:
     values) has dimension (e.g., the case of the cross section) or not (e.g., the case of the 
     spin observables). Can only be "dimensionless" or "dimensionful".
     """
-    def __init__(self, name, data, energies, title, ref_type):
+    def __init__(self, name, data, energies, angles, title, ref_type):
         self.name = name
         self.data = data
         self.energies = energies
+        self.angles = angles
         self.title = title
         self.ref_type = ref_type
         if (ref_type != "dimensionless") and (ref_type != "dimensionful"):
@@ -637,8 +638,9 @@ class LengthScale:
             self.ls_bound_upper = self.ls_guess.copy()
 
 class GSUMDiagnostics:
-    def __init__(self, observable, Lambda_b, inputspace, traintestsplit, \
-                 gphyperparameters, orderinfo, filenaming, E_lab = [], E_lab_x = [], constrained = False):
+    def __init__(self, observable, Lambda_b, inputspace, traintestsplit, 
+                 gphyperparameters, orderinfo, filenaming, fixed_quantity = [None, None, None], 
+                 x_quantity = [None, None], constrained = False):
         """
         Class for everything involving Jordan Melendez's GSUM library for observables that 
         can be plotted against angle.
@@ -670,11 +672,17 @@ class GSUMDiagnostics:
         self.caption_coeffs = self.inputspace.caption
         self.title_coeffs = self.inputspace.title
 
-        # energy at which the observable is evaluated
-        self.E_lab = E_lab
+        # energy or angle at which the observable is evaluated, along with all 
+        # possible energies or angles for evaluation
+        self.fixed_quantity_name = fixed_quantity[0]
+        self.fixed_quantity_value = fixed_quantity[1]
+        self.fixed_quantity_array = fixed_quantity[2]
+        self.fixed_quantity_units = fixed_quantity[3]
 
-        # energy mesh
-        self.E_lab_x = E_lab_x
+        # angle or energy mesh
+        self.x_quantity_name = x_quantity[0]
+        self.x_quantity_array = x_quantity[1]
+        self.x_quantity_units = x_quantity[2]
 
         # information on the train/test split
         self.traintestsplit = traintestsplit
@@ -717,39 +725,65 @@ class GSUMDiagnostics:
         self.Q_param = self.filenaming.Q_param
         self.filename_addendum = self.filenaming.filename_addendum
         
-        if self.E_lab == 0:
-            self.X_train = self.x_train[:, None]
-            self.y_train = self.y_train.T
-            self.X_test = self.x_test[:, None]
-            self.y_test = self.y_test.T
-        else:
-            self.t_lab_idx = np.nonzero(self.E_lab_x == self.E_lab)[0][0]
+        if self.fixed_quantity_name == "energy":
+            self.fixed_idx = np.nonzero(self.fixed_quantity_array == self.fixed_quantity_value)[0][0]
             
-            self.data = self.data[:, self.t_lab_idx].T
+            self.data = self.data[:, self.fixed_idx, :].T
             
             self.X_train = self.x_train[:, None]
-            self.y_train = self.y_train[:, self.t_lab_idx, :].T
+            self.y_train = self.y_train[:, self.fixed_idx, :].T
             # self.y_train = self.y_train.T
             self.X_test = self.x_test[:, None]
-            self.y_test = self.y_test[:, self.t_lab_idx, :].T
+            self.y_test = self.y_test[:, self.fixed_idx, :].T
             # self.y_test = self.y_test.T
-        
-        # determines the reference scale for the truncation-error model, including for 
-        # training and testing
-        if self.ref_type == "dimensionless":
-        	self.ref = 1
-        	self.ref_train = np.ones(len(self.x_train))
-        	self.ref_test = np.ones(len(self.x_test))
-        elif self.ref_type == "dimensionful":
-            if self.E_lab == 0:
-                self.ref = self.data[-1]
-                self.data = self.data.T
-            else:
+            
+            # determines the reference scale for the truncation-error model, including for 
+            # training and testing
+            if self.ref_type == "dimensionless":
+            	self.ref = 1
+            	self.ref_train = np.ones(len(self.x_train))
+            	self.ref_test = np.ones(len(self.x_test))
+            elif self.ref_type == "dimensionful":
                 self.ref = self.data[:, -1]
+                    
+                f = interp1d(self.x, self.ref)
+                self.ref_train = f(self.x_train)
+                self.ref_test = f(self.x_test)
                 
-            f = interp1d(self.x, self.ref)
-            self.ref_train = f(self.x_train)
-            self.ref_test = f(self.x_test)
+        elif self.fixed_quantity_name == "angle":
+            if self.fixed_quantity_value == 0:
+                self.X_train = self.x_train[:, None]
+                self.y_train = self.y_train.T
+                self.X_test = self.x_test[:, None]
+                self.y_test = self.y_test.T
+            else:
+                self.fixed_idx = np.nonzero(self.fixed_quantity_array == self.fixed_quantity_value)[0][0]
+                
+                self.data = self.data[:, :, self.fixed_idx].T
+                
+                self.X_train = self.x_train[:, None]
+                self.y_train = self.y_train[:, self.fixed_idx, :].T
+                # self.y_train = self.y_train.T
+                self.X_test = self.x_test[:, None]
+                self.y_test = self.y_test[:, self.fixed_idx, :].T
+                # self.y_test = self.y_test.T
+            
+            # determines the reference scale for the truncation-error model, including for 
+            # training and testing
+            if self.ref_type == "dimensionless":
+            	self.ref = 1
+            	self.ref_train = np.ones(len(self.x_train))
+            	self.ref_test = np.ones(len(self.x_test))
+            elif self.ref_type == "dimensionful":
+                if self.fixed_quantity_value == 0:
+                    self.ref = self.data[-1]
+                    self.data = self.data.T
+                else:
+                    self.ref = self.data[:, -1]
+                    
+                f = interp1d(self.x, self.ref)
+                self.ref_train = f(self.x_train)
+                self.ref_test = f(self.x_test)
 
         # Extract the coefficients and define kernel
         self.coeffs = gm.coefficients(self.data, ratio = self.ratio, \
@@ -771,7 +805,9 @@ class GSUMDiagnostics:
         # print("coeffs_test = " + str(self.coeffs_test))
 
         # defines the kernel
-        if self.E_lab < 70.1 and self.E_lab >= 1.:
+        if self.fixed_quantity_name == "energy" and \
+                self.fixed_quantity_value < 70.1 and \
+                self.fixed_quantity_value >= 1.:
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
                         WhiteKernel(1e-8, noise_level_bounds = 'fixed')
@@ -889,7 +925,7 @@ class GSUMDiagnostics:
             fig.tight_layout()
     
             fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
-                    '_' + 'interp_and_underlying_processes' + '_' + str(self.E_lab) + 'MeVlab' + \
+                    '_' + 'interp_and_underlying_processes' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
                     '_' + self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
                     self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
@@ -929,7 +965,7 @@ class GSUMDiagnostics:
                 fig.tight_layout();
             
                 fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
-                        '_' + 'md' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
+                        '_' + 'md' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
                         self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
@@ -974,7 +1010,7 @@ class GSUMDiagnostics:
                     fig.tight_layout()
                     
                     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
-                            '_' + 'pc_vs_index' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
+                            '_' + 'pc_vs_index' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
                             self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
@@ -1221,7 +1257,8 @@ class GSUMDiagnostics:
             if 'fig' in locals() and whether_save:
                 fig.tight_layout()
         
-                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + str(self.E_lab) + 'MeVlab' + \
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
                         '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
                             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
@@ -1270,13 +1307,13 @@ class GSUMDiagnostics:
             print("Error in calculating or plotting the credible intervals.")
         
         # adds a title
-        fig_main.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.E_lab) + '\,MeV)\,' + \
+        fig_main.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
                         '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
                         '}},\,\mathrm{' + self.vs_what + '})$', size = 20)
         
         if whether_save:
             fig_main.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
-                        '_' + 'plotzilla' + '_' + str(self.E_lab) + 'MeVlab' + '_' + \
+                        '_' + 'plotzilla' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
