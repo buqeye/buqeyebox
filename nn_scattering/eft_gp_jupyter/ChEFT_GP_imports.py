@@ -640,7 +640,7 @@ class LengthScale:
 class GSUMDiagnostics:
     def __init__(self, observable, Lambda_b, inputspace, traintestsplit, 
                  gphyperparameters, orderinfo, filenaming, fixed_quantity = [None, None, None], 
-                 x_quantity = [None, None], constrained = False):
+                 x_quantity = [None, None], posteriorgrid = None):
         """
         Class for everything involving Jordan Melendez's GSUM library for observables that 
         can be plotted against angle.
@@ -653,7 +653,7 @@ class GSUMDiagnostics:
         filenaming (FileNaming) : strings for naming the save files
         E_lab (float) : lab energy (MeV) at which to evaluate the observable
         E_lab_x (float array) : lab-energy (MeV) x-coordinate mesh over which the GP is calculated, plotted, and fitted
-        constrained (boolean) : is the GP constrained?
+        posteriorgrid (PosteriorBounds) : xy-grid over which to plot the Lambda-ell posterior pdf
         """
         # information on the observable
         self.observable = observable
@@ -711,6 +711,7 @@ class GSUMDiagnostics:
 
         # information on the orders at which the potential is evaluated
         self.orderinfo = orderinfo
+        self.nn_orders_full = self.orderinfo.orders_full
         self.nn_orders = self.orderinfo.orders_full
         self.nn_orders_mask = self.orderinfo.mask_full
         self.colors = self.orderinfo.colors_array
@@ -724,6 +725,9 @@ class GSUMDiagnostics:
         self.scale = self.filenaming.scale
         self.Q_param = self.filenaming.Q_param
         self.filename_addendum = self.filenaming.filename_addendum
+        
+        # posterior pdf bounds
+        self.posteriorgrid = posteriorgrid
         
         if self.fixed_quantity_name == "energy":
             self.fixed_idx = np.nonzero(self.fixed_quantity_array == self.fixed_quantity_value)[0][0]
@@ -740,15 +744,15 @@ class GSUMDiagnostics:
             # determines the reference scale for the truncation-error model, including for 
             # training and testing
             if self.ref_type == "dimensionless":
-            	self.ref = 1
+            	self.ref = np.ones(len(self.x))
             	self.ref_train = np.ones(len(self.x_train))
             	self.ref_test = np.ones(len(self.x_test))
             elif self.ref_type == "dimensionful":
                 self.ref = self.data[:, -1]
                     
-                f = interp1d(self.x, self.ref)
-                self.ref_train = f(self.x_train)
-                self.ref_test = f(self.x_test)
+                self.interp_f_ref = interp1d(self.x, self.ref)
+                self.ref_train = self.interp_f_ref(self.x_train)
+                self.ref_test = self.interp_f_ref(self.x_test)
                 
         elif self.fixed_quantity_name == "angle":
             if self.fixed_quantity_value == 0:
@@ -771,7 +775,7 @@ class GSUMDiagnostics:
             # determines the reference scale for the truncation-error model, including for 
             # training and testing
             if self.ref_type == "dimensionless":
-            	self.ref = 1
+            	self.ref = np.ones(len(self.x))
             	self.ref_train = np.ones(len(self.x_train))
             	self.ref_test = np.ones(len(self.x_test))
             elif self.ref_type == "dimensionful":
@@ -781,24 +785,27 @@ class GSUMDiagnostics:
                 else:
                     self.ref = self.data[:, -1]
                     
-                f = interp1d(self.x, self.ref)
-                self.ref_train = f(self.x_train)
-                self.ref_test = f(self.x_test)
+                self.interp_f_ref = interp1d(self.x, self.ref)
+                self.ref_train = self.interp_f_ref(self.x_train)
+                self.ref_test = self.interp_f_ref(self.x_test)
+
+        # uses interpolation to find the proper reference scales
+        self.interp_f_ref = interp1d(self.x, self.ref)
 
         # Extract the coefficients and define kernel
         self.coeffs = gm.coefficients(self.data, ratio = self.ratio, \
                             ref = self.ref, orders = self.nn_orders)[:, self.nn_orders_mask]
 
         # uses interpolation to find the proper ratios for training and testing
-        f = interp1d(self.x, self.ratio * np.ones(len(self.x)))
-        self.ratio_train = f(self.x_train)
+        self.interp_f_ratio = interp1d(self.x, self.ratio * np.ones(len(self.x)))
+        self.ratio_train = self.interp_f_ratio(self.x_train)
         # print(self.y_train.shape)
         # print(self.ratio_train.shape)
         # print(self.ref_train.shape)
         self.coeffs_train = gm.coefficients(self.y_train, ratio = self.ratio_train, \
                                           ref = self.ref_train, \
                                           orders = self.nn_orders)[:, self.nn_orders_mask]
-        self.ratio_test = f(self.x_test)
+        self.ratio_test = self.interp_f_ratio(self.x_test)
         self.coeffs_test = gm.coefficients(self.y_test, ratio = self.ratio_test, \
                                           ref = self.ref_test, \
                                           orders = self.nn_orders)[:, self.nn_orders_mask]
@@ -824,6 +831,7 @@ class GSUMDiagnostics:
        
         self.nn_orders = self.orders_restricted
         # print("Orders are " + str(self.nn_orders))
+        # print("Full orders are " + str(self.nn_orders_full))
         
         # print("Colors are " + str(self.colors))
         self.colors = list(np.array(self.colors)[self.mask_restricted])
@@ -1018,206 +1026,252 @@ class GSUMDiagnostics:
         except:
             print("Error in calculating or plotting the pivoted Cholesky decomposition.")
 
-#     def PlotPosteriorPDF(self, posteriorgrid):
-#         try:
-#             # creates the grid over which the posterior PDF will be plotted
-#             self.posteriorgrid = posteriorgrid
-#             self.ls_vals = self.posteriorgrid.x_vals
-#             self.lambda_vals = self.posteriorgrid.y_vals
-            
-#             # creates and fits the TruncationGP for the given parameters
-#             self.gp_dsg = gm.TruncationGP(self.kernel_dsg, ref = self.dsg_vs_theta[0, -1], \
-#                                         ratio = self.ratio, center = self.center, \
-#                                         disp = self.disp, df = self.df, scale = 1, \
-#                                         excluded = excluded)
-#             self.gp_dsg.fit(self.X_train, self.y_train, \
-#                             orders = self.nn_orders, dX = np.array([[0]]), dy=[0])
-#             self.gp_dsg.fit(self.X_train, self.y_train, \
-#                             orders = self.nn_orders, dX = np.array([[0]]), dy=[0])
-
-#             # Compute the log likelihood for values on this grid. 
-#             self.ls_lambda_loglike = np.array([[
-#                 self.gp_dsg.log_marginal_likelihood( theta=[ls_,], \
-#                     ratio = Q_approx(E_to_p(self.t_lab_dsg, "np"), self.Q_param, \
-#                                      Lambda_b = lambd) ) \
-#                     for ls_ in np.log(self.ls_vals)]
-#                     for lambd in self.lambda_vals])
-
-#             # Makes sure that the values don't get too big or too small
-#             self.ls_lambda_like = np.exp(self.ls_lambda_loglike - np.max(self.ls_lambda_loglike))
-
-#             # Now compute the marginal distributions
-#             self.lambda_like = np.trapz(self.ls_lambda_like, x = self.ls_vals, axis = -1)
-#             self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
-
-#             # Normalize them
-#             self.lambda_like /= np.trapz(self.lambda_like, x = self.lambda_vals, axis = 0)
-#             self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
-            
-#             with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
-#                 cmap_name = 'Blues'
-#                 cmap = mpl.cm.get_cmap(cmap_name)
-
-#                 # Setup axes
-#                 fig, ax_joint, ax_marg_x, ax_marg_y = joint_plot(ratio=5, height=3.4)
-
-#                 # Plot contour
-#                 ax_joint.contour(self.ls_vals, self.lambda_vals, self.ls_lambda_like,
-#                                  levels=[np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999],
-#                                  cmap=cmap_name, vmin=-0.05, vmax=0.8, zorder=1)
-
-#                 # Now plot the marginal distributions
-#                 ax_marg_y.plot(self.lambda_like, self.lambda_vals, c=cmap(0.8), lw=1)
-#                 ax_marg_y.fill_betweenx(self.lambda_vals, np.zeros_like(self.lambda_like),
-#                                         self.lambda_like, facecolor=cmap(0.2), lw=1)
-#                 ax_marg_x.plot(self.ls_vals, self.ls_like, c=cmap(0.8), lw=1)
-#                 ax_marg_x.fill_between(self.ls_vals, np.zeros_like(self.ls_vals),
-#                                        self.ls_like, facecolor=cmap(0.2), lw=1)
-
-#                 # Formatting
-#                 ax_joint.set_xlabel(r'$\ell$')
-#                 ax_joint.set_ylabel(r'$\Lambda$')
-#                 ax_joint.axvline(self.ls, 0, 1, c=gray, lw=1, zorder=0)
-#                 ax_joint.axhline(self.Lambda_b, 0, 1, c=gray, lw=1, zorder=0)
-#                 ax_joint.margins(x=0, y=0.)
-#                 ax_joint.set_xlim(min(self.ls_vals), max(self.ls_vals))
-#                 ax_joint.set_ylim(min(self.lambda_vals), max(self.lambda_vals))
-#                 ax_marg_x.set_ylim(bottom=0);
-#                 ax_marg_y.set_xlim(left=0);
-#                 ax_joint.text(0.95, 0.95, r'pr$(\ell, \Lambda \,|\, \vec{\mathbf{y}}_k)$', ha='right', va='top',
-#                               transform=ax_joint.transAxes,
-#                               bbox=text_bbox
-#                              );
-
-#                 plt.show()
-                
-#                 fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + \
-#                             'Lambda_ell_jointplot' + '_' + self.observable_name + '_' + str(self.t_lab_dsg) + 'MeVlab' + '_' + \
-#                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-#                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-#                             self.train_pts_loc + '_' + self.filename_addendum)
+    def PlotPosteriorPDF(self, ax_joint = None, ax_marg_x = None, 
+                         ax_marg_y = None, whether_save = True):
+        def lambda_interp_f_ref(x_):
+            X = np.ravel(x_)
+            return self.interp_f_ref(X)
+        def lambda_interp_f_ratio(x_, lambda_var):
+            X = np.ravel(x_)
+            return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
+        # try:
+        # creates the grid over which the posterior PDF will be plotted
+        self.ls_vals = self.posteriorgrid.x_vals
+        self.lambda_vals = self.posteriorgrid.y_vals
         
-#         except:
-#             return 0
+        # creates and fits the TruncationGP for the given parameters
+        # self.gp_dsg = gm.TruncationGP(self.kernel_dsg, ref = self.dsg_vs_theta[0, -1], \
+        #                             ratio = self.ratio, center = self.center, \
+        #                             disp = self.disp, df = self.df, scale = 1, \
+        #                             excluded = [0])
+        self.gp_post = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+                                    ratio = lambda_interp_f_ratio, 
+                                    center = self.center, 
+                                    disp = self.disp, df = self.df, scale = self.std_est, 
+                                    excluded = [0], 
+                                    ratio_kws = {"lambda_var" : self.Lambda_b})
+        # print(self.X_train.shape)
+        # print(self.y_train.shape)
+        # print(self.nn_orders)
+        # print(self.nn_orders_mask)
+        # print(self.orders_restricted)
+        # print(self.mask_restricted)
+        self.gp_post.fit(self.X_train, self.y_train, orders = self.nn_orders_full, 
+                         orders_eval = self.nn_orders, dX = np.array([[0]]), dy=[0])
+        # self.gp_dsg.fit(self.X_train, self.y_train, \
+        #                 orders = self.nn_orders, dX = np.array([[0]]), dy=[0])
 
-#     def PlotTruncationErrors(self, online_data):
-#         # given the way the GSUM code is written and the fact that we are now evaluating 
-#         # dimensionless parameters Q that do not vary with momentum, this code is defunct.
-#         self.online_data = online_data
+        # Compute the log likelihood for values on this grid. 
+        # self.ls_lambda_loglike = np.array([[
+        #     self.gp_post.log_marginal_likelihood( theta=[ls_,], \
+        #         ratio = Q_approx(E_to_p(self.fixed_quantity_value, "np"), self.Q_param, \
+        #                           Lambda_b = lambd) ) \
+        #         for ls_ in np.log(self.ls_vals)]
+        #         for lambd in self.lambda_vals])
+        self.ls_lambda_loglike = np.array([[
+            self.gp_post.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders,
+                                                 **{"lambda_var" : lambda_})
+                for ls_ in np.log(self.ls_vals)]
+                for lambda_ in self.lambda_vals])
+
+        # Makes sure that the values don't get too big or too small
+        self.ls_lambda_like = np.exp(self.ls_lambda_loglike - np.max(self.ls_lambda_loglike))
+
+        # Now compute the marginal distributions
+        self.lambda_like = np.trapz(self.ls_lambda_like, x = self.ls_vals, axis = -1)
+        self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+
+        # Normalize them
+        self.lambda_like /= np.trapz(self.lambda_like, x = self.lambda_vals, axis = 0)
+        self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
         
-#         if self.observable == "A":
-#             # without the constraint
-#             self.gp_A = gm.TruncationGP(self.kernel_dsg, ref = 1, ratio = self.ratio, \
-#                         center = self.center, disp = self.disp, df = self.df, \
-#                         scale = 1, excluded = excluded)
+        with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
+            cmap_name = 'Blues'
+            cmap = mpl.cm.get_cmap(cmap_name)
 
-#             self.gp_A.fit(self.degrees[self.deg_train_mask_dsg][:, None], \
-#                           self.dsg_train, orders = self.nn_orders)
+            # Setup axes
+            if ax_joint == None and ax_marg_x == None and ax_marg_y == None:
+                fig, ax_joint, ax_marg_x, ax_marg_y = joint_plot(ratio=5, height=3.4)
 
-#             fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(2.45, 2.5))
-#             fig.delaxes(axes[2,1])
-#             if self.scheme == "EKM" or self.scheme == "EMN":
-#                 fig.delaxes(axes[2,0])
-#             if self.scheme == "Gezerlis":
-#                 fig.delaxes(axes[1, 0])
-#                 fig.delaxes(axes[1, 1])
-#                 fig.delaxes(axes[2, 0])
+            # Plot contour
+            ax_joint.contour(self.ls_vals, self.lambda_vals, self.ls_lambda_like,
+                              levels=[np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999],
+                              cmap=cmap_name, vmin=-0.05, vmax=0.8, zorder=1)
 
-#             for i, n in enumerate(self.nn_orders[1:]):
-#                 _, self.std_trunc = self.gp_A.predict(self.degrees[:, None], order = n, \
-#                                         return_std = True, kind = 'trunc')
+            # Now plot the marginal distributions
+            ax_marg_y.plot(self.lambda_like, self.lambda_vals, c=cmap(0.8), lw=1)
+            ax_marg_y.fill_betweenx(self.lambda_vals, np.zeros_like(self.lambda_like),
+                                    self.lambda_like, facecolor=cmap(0.2), lw=1)
+            ax_marg_x.plot(self.ls_vals, self.ls_like, c=cmap(0.8), lw=1)
+            ax_marg_x.fill_between(self.ls_vals, np.zeros_like(self.ls_vals),
+                                    self.ls_like, facecolor=cmap(0.2), lw=1)
 
-#                 for j in range(i, 5):
-#                     ax = axes.ravel()[j]
-#                     ax.plot(self.degrees, self.dsg_vs_theta[:, i+1], zorder=i-5, c = self.colors[i])
-#                     ax.fill_between(self.degrees, self.dsg_vs_theta[:, i+1] + 2*self.std_trunc, \
-#                                     self.dsg_vs_theta[:, i+1] - 2*self.std_trunc, zorder=i-5, \
-#                                     facecolor = self.light_colors[i], edgecolor = self.colors[i], \
-#                                     lw=edgewidth)
-#                 ax = axes.ravel()[i]
-#                 ax.plot(self.degrees, self.online_data[self.t_lab_idx_dsg], color=softblack, \
-#                         lw=1, ls='--')
-#                 if self.vs_what == "deg":
-#                     ax.set_xticks([60, 120])
-#                 elif self.vs_what == "qcm" or self.vs_what == "qcm2":
-#                     ax.set_xticks((np.linspace(max(self.degrees) / 3, max(self.degrees) - 1, 3)).astype(int))
-#                 ax.set_yticks([-0.5, 0])
-#                 ax.set_yticks([-0.25,], minor=True)
+            # Formatting
+            ax_joint.set_xlabel(r'$\ell$')
+            ax_joint.set_ylabel(r'$\Lambda$')
+            ax_joint.axvline(self.ls, 0, 1, c=gray, lw=1, zorder=0)
+            ax_joint.axhline(self.Lambda_b, 0, 1, c=gray, lw=1, zorder=0)
+            ax_joint.margins(x=0, y=0.)
+            ax_joint.set_xlim(min(self.ls_vals), max(self.ls_vals))
+            ax_joint.set_ylim(min(self.lambda_vals), max(self.lambda_vals))
+            ax_marg_x.set_ylim(bottom=0);
+            ax_marg_y.set_xlim(left=0);
+            ax_joint.text(0.95, 0.95, r'pr$(\ell, \Lambda \,|\, \vec{\mathbf{y}}_k)$', ha='right', va='top',
+                          transform=ax_joint.transAxes,
+                          bbox=text_bbox
+                          );
 
-#             # Format
-#             if self.vs_what == "deg":
-#                 axes[1, 0].set_xlabel(r'$\theta$ (deg)')
-#                 axes[1, 1].set_xlabel(r'$\theta$ (deg)')
-#             elif self.vs_what == "qcm":
-#                 axes[1, 0].set_xlabel(r'$q_{\mathrm{cm}}$ (MeV)')
-#                 axes[1, 1].set_xlabel(r'$q_{\mathrm{cm}}$ (MeV)')
-#             elif self.vs_what == "qcm2":
-#                 axes[1, 0].set_xlabel(r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)')
-#                 axes[1, 1].set_xlabel(r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)')
-#             fig.tight_layout(h_pad=0.3, w_pad=0.3);
-
-#             fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + \
-#                     'spin_obs_A_full_pred_unconstrained' + '_' + str(self.t_lab_dsg) + 'MeVlab' + '_' + \
-#                     self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-#                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-#                     self.train_pts_loc)
-
-#             # with the constraint
-#             self.gp_A = gm.TruncationGP(self.kernel_dsg, ref = 1, ratio = self.ratio, \
-#                         center = self.center, disp = self.disp, df = self.df, \
-#                         scale = 1, excluded = excluded)
+            plt.show()
             
-#             self.gp_A.fit(self.degrees[self.deg_train_mask_dsg][:, None], self.dsg_train, \
-#                           orders = self.nn_orders, dX = np.array([[0]]), dy=[0])
+            if 'fig' in locals() and whether_save:
+                # fig.tight_layout()
+                # fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + \
+                #         'Lambda_ell_jointplot' + '_' + self.observable_name + '_' + str(self.t_lab_dsg) + 'MeVlab' + '_' + \
+                #         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+                #         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+                #         self.train_pts_loc + '_' + self.filename_addendum)
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
+                            '_' + 'Lambda_ell_jointplot' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
+                            self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+                            '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+                            self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+        # except:
+        #     print("Error in plotting the posterior PDF.")
 
-#             fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(2.45, 2.5))
-#             fig.delaxes(axes[2,1])
-#             if self.scheme == "EKM" or self.scheme == "EMN":
-#                 fig.delaxes(axes[2,0])
-#             if self.scheme == "Gezerlis":
-#                 fig.delaxes(axes[1, 0])
-#                 fig.delaxes(axes[1, 1])
-#                 fig.delaxes(axes[2, 0])
+    def PlotTruncationErrors(self, online_data, constraint = [[[]], []], whether_save = True):
+        self.online_data = online_data
+        
+        def lambda_interp_f_ref(x_):
+            X = np.ravel(x_)
+            return self.interp_f_ref(X)
+        def lambda_interp_f_ratio(x_, lambda_var):
+            X = np.ravel(x_)
+            return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
+        
+        # try:
+        # without the constraint
+        self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+                    ratio = lambda_interp_f_ratio, 
+                    center = self.center, disp = self.disp, df = self.df, 
+                    scale = self.std_est, excluded = [0], 
+                    ratio_kws = {"lambda_var" : self.Lambda_b})
+        # if not constrained:
+        #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
+        # else:
+        #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
+        #                       dX = np.array([[0]]), dy=[0])
+        self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
+                              dX = np.array(constraint[0]), dy=constraint[1])
 
-#             for i, n in enumerate(self.nn_orders[1:]):
-#                 _, self.std_trunc = self.gp_A.predict(self.degrees[:, None], order = n, \
-#                                         return_std=True, kind='trunc')
+        fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(6, 7))
+        fig.delaxes(axes[2,1])
+        if self.scheme == "EKM" or self.scheme == "EMN":
+            fig.delaxes(axes[2,0])
+        if self.scheme == "GT":
+            fig.delaxes(axes[1, 0])
+            fig.delaxes(axes[1, 1])
+            fig.delaxes(axes[2, 0])
 
-#                 for j in range(i, 5):
-#                     ax = axes.ravel()[j]
-#                     ax.plot(self.degrees, self.dsg_vs_theta[:, i+1], zorder=i-5, \
-#                             c=self.colors[i])
-#                     ax.fill_between(self.degrees, self.dsg_vs_theta[:, i+1] + 2*self.std_trunc, \
-#                                     self.dsg_vs_theta[:, i+1] - 2*self.std_trunc, zorder=i-5, \
-#                                     facecolor = self.light_colors[i], \
-#                                     edgecolor = self.colors[i], lw=edgewidth)
-#                 ax = axes.ravel()[i]
-#                 ax.plot(self.degrees, self.online_data[self.t_lab_idx_dsg], color=softblack, \
-#                         lw=1, ls='--')
-#                 if self.vs_what == "deg":
-#                     ax.set_xticks([60, 120])
-#                 elif self.vs_what == "qcm" or self.vs_what == "qcm2":
-#                     ax.set_xticks((np.linspace(max(self.degrees) / 3, max(self.degrees) - 1, 3)).astype(int))
-#                 ax.set_yticks([-0.5, 0])
-#                 ax.set_yticks([-0.25,], minor=True)
+        for i, n in enumerate(self.nn_orders[1:]):
+            _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
+                                    return_std = True, kind = 'trunc')
 
-#             # Format
-#             if self.vs_what == "deg":
-#                 axes[1, 0].set_xlabel(r'$\theta$ (deg)')
-#                 axes[1, 1].set_xlabel(r'$\theta$ (deg)')
-#             elif self.vs_what == "qcm":
-#                 axes[1, 0].set_xlabel(r'$q_{\mathrm{cm}}$ (MeV)')
-#                 axes[1, 1].set_xlabel(r'$q_{\mathrm{cm}}$ (MeV)')
-#             elif self.vs_what == "qcm2":
-#                 axes[1, 0].set_xlabel(r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)')
-#                 axes[1, 1].set_xlabel(r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)')
-#             fig.tight_layout(h_pad=0.3, w_pad=0.3);
+            for j in range(i, max(self.nn_orders)):
+                ax = axes.ravel()[j]
+                ax.plot(self.x, self.data[:, i+1], zorder=i-5, c = self.colors[i])
+                ax.fill_between(self.x, self.data[:, i+1] + 2*self.std_trunc, 
+                                self.data[:, i+1] - 2*self.std_trunc, zorder=i-5, 
+                                facecolor = self.light_colors[i], edgecolor = self.colors[i], 
+                                lw=edgewidth)
+            ax = axes.ravel()[i]
+            if self.fixed_quantity_name == "energy":
+                ax.plot(self.x, self.online_data[self.fixed_quantity_value, :], color=softblack, 
+                    lw=1, ls='--')
+            elif self.fixed_quantity_name == "angle":
+                ax.plot(self.x, self.online_data[:, self.fixed_quantity_value], color=softblack, 
+                    lw=1, ls='--')
+            ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
+                           min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
+            ax.set_yticks([-0.5, 0])
+            ax.set_yticks([-0.25,], minor=True)
+
+        # Format
+        axes[1, 0].set_xlabel(self.caption_coeffs)
+        axes[1, 1].set_xlabel(self.caption_coeffs)
+        # fig.tight_layout(h_pad=0.3, w_pad=0.3);
+        if 'fig' in locals() and whether_save:
+            fig.tight_layout()
             
-#             fig.savefig('figures/' + self.scheme + '_' + self.scale + '/' + \
-#                     'spin_obs_A_full_pred_constrained' + '_' + str(self.t_lab_dsg) + 'MeVlab' + '_' + \
-#                     self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-#                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-#                     self.train_pts_loc + '_' + self.filename_addendum)
+            # if not constrained:
+            #     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+            #         str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
+            #         '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + 
+            #             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+            #         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+            #         self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+            # else:
+            #     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+            #         str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
+            #         '_' + 'full_pred_truncation_constrained' + '_' + self.scheme + '_' + 
+            #             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+            #         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+            #         self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+        # except:
+        #     print("Error plotting the truncation errors.")
+        # # with the constraint
+        # self.gp_A = gm.TruncationGP(self.kernel_dsg, ref = 1, ratio = self.ratio, \
+        #             center = self.center, disp = self.disp, df = self.df, \
+        #             scale = 1, excluded = [0])
+        
+        # self.gp_A.fit(self.degrees[self.deg_train_mask_dsg][:, None], self.dsg_train, \
+        #               orders = self.nn_orders, dX = np.array([[0]]), dy=[0])
+
+        # fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(2.45, 2.5))
+        # fig.delaxes(axes[2,1])
+        # if self.scheme == "EKM" or self.scheme == "EMN":
+        #     fig.delaxes(axes[2,0])
+        # if self.scheme == "Gezerlis":
+        #     fig.delaxes(axes[1, 0])
+        #     fig.delaxes(axes[1, 1])
+        #     fig.delaxes(axes[2, 0])
+
+        # for i, n in enumerate(self.nn_orders[1:]):
+        #     _, self.std_trunc = self.gp_A.predict(self.degrees[:, None], order = n, \
+        #                             return_std=True, kind='trunc')
+
+        #     for j in range(i, 5):
+        #         ax = axes.ravel()[j]
+        #         ax.plot(self.degrees, self.dsg_vs_theta[:, i+1], zorder=i-5, \
+        #                 c=self.colors[i])
+        #         ax.fill_between(self.degrees, self.dsg_vs_theta[:, i+1] + 2*self.std_trunc, \
+        #                         self.dsg_vs_theta[:, i+1] - 2*self.std_trunc, zorder=i-5, \
+        #                         facecolor = self.light_colors[i], \
+        #                         edgecolor = self.colors[i], lw=edgewidth)
+        #     ax = axes.ravel()[i]
+        #     ax.plot(self.degrees, self.online_data[self.t_lab_idx_dsg], color=softblack, \
+        #             lw=1, ls='--')
+        #     if self.vs_what == "deg":
+        #         ax.set_xticks([60, 120])
+        #     elif self.vs_what == "qcm" or self.vs_what == "qcm2":
+        #         ax.set_xticks((np.linspace(max(self.degrees) / 3, max(self.degrees) - 1, 3)).astype(int))
+        #     ax.set_yticks([-0.5, 0])
+        #     ax.set_yticks([-0.25,], minor=True)
+
+        # # Format
+        # axes[1, 0].set_xlabel(self.caption_coeffs)
+        # axes[1, 1].set_xlabel(self.caption_coeffs)
+        # # fig.tight_layout(h_pad=0.3, w_pad=0.3)
+        
+        # if 'fig' in locals() and whether_save:
+        #     fig.tight_layout()
+    
+        #     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+        #             str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
+        #             '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + \
+        #                 self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+        #             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+        #             self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
 
     def PlotCredibleIntervals(self, ax = None, whether_save = True):
         """
@@ -1279,15 +1333,21 @@ class GSUMDiagnostics:
         Figure with plot.
         """
         # using gridspec, plots the Mahalanobis distance, coefficient curves, credible 
-        # intervals, and pivoted Cholesky on one figure
-        fig_main = plt.figure(figsize=(8, 8))
+        # intervals, pivoted Cholesky, and Lambda-ell posterior pdf on one figure
+        fig_main = plt.figure(figsize=(12, 10))
         
-        gs = mpl.gridspec.GridSpec(2, 2, width_ratios=[1, 2], height_ratios=[1, 1])
+        gs = mpl.gridspec.GridSpec(ncols = 30, nrows = 24, 
+                                   wspace = 200, hspace = 400, 
+                                   figure = fig_main)
         
-        ax_md = fig_main.add_subplot(gs[0])
-        ax_coeff = fig_main.add_subplot(gs[1])
-        ax_ci = fig_main.add_subplot(gs[2])
-        ax_pc = fig_main.add_subplot(gs[3])
+        ax_pdf_joint = fig_main.add_subplot(gs[2:12, 0:10])
+        ax_pdf_x = fig_main.add_subplot(gs[0:2, 0:10])
+        ax_pdf_y = fig_main.add_subplot(gs[2:12, 10:12])
+        
+        ax_md = fig_main.add_subplot(gs[0:24, 24:30])
+        ax_coeff = fig_main.add_subplot(gs[0:12, 12:24])
+        ax_ci = fig_main.add_subplot(gs[12:24, 0:12])
+        ax_pc = fig_main.add_subplot(gs[12:24, 12:24])
         
         try:
             self.PlotCoefficients(ax = ax_coeff, whether_save = True)
@@ -1305,11 +1365,16 @@ class GSUMDiagnostics:
             self.PlotCredibleIntervals(ax = ax_ci, whether_save = True)
         except:
             print("Error in calculating or plotting the credible intervals.")
+        try:
+            self.PlotPosteriorPDF(ax_joint = ax_pdf_joint, ax_marg_x = ax_pdf_x, 
+                                 ax_marg_y = ax_pdf_y, whether_save = True)
+        except:
+            print("Error in calculating or plotting the posterior PDF.")
         
         # adds a title
         fig_main.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
                         '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
-                        '}},\,\mathrm{' + self.vs_what + '})$', size = 20)
+                        '}},\,\mathrm{' + self.vs_what + '})$', size = 30)
         
         if whether_save:
             fig_main.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \

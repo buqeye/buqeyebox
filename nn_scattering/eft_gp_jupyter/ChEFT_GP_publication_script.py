@@ -18,8 +18,8 @@ OrderInfo, versatile_train_test_split, InputSpaceBunch, \
 ObservableBunch, Interpolation, TrainTestSplit, ScaleSchemeBunch, LengthScale, \
 GSUMDiagnostics
 import copy as cp
-# import urllib
-# import tables
+import urllib
+import tables
 
 # import warnings
 # warnings.filterwarnings("error")
@@ -63,20 +63,28 @@ mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, for
 
 edgewidth = 0.6
 
-# # We get the NN data from a separate place in our github respository.
-# nn_online_pot = 'pwa93'
-# nn_online_url = 'https://github.com/buqeye/buqeyebox/blob/master/nn_scattering/NN-online-Observables.h5?raw=true'
-# nno_response = urllib.request.urlopen(nn_online_url) 
-# nn_online_file = tables.open_file("nn_online_example.h5", driver="H5FD_CORE",
-#                           driver_core_image=nno_response.read(),
-#                           driver_core_backing_store=0)
-# SGT_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/SGT').read()
-# DSG_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/DSG').read()[:, :-1]
-# AY_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/PB').read()[:, :-1]
-# A_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/A').read()[:, :-1]
-# D_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/D').read()[:, :-1]
-# AXX_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/AXX').read()[:, :-1]
-# AYY_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/AYY').read()[:, :-1]
+# We get the NN data from a separate place in our github respository.
+nn_online_pot = 'pwa93'
+nn_online_url = 'https://github.com/buqeye/buqeyebox/blob/master/nn_scattering/NN-online-Observables.h5?raw=true'
+nno_response = urllib.request.urlopen(nn_online_url) 
+nn_online_file = tables.open_file("nn_online_example.h5", driver="H5FD_CORE",
+                          driver_core_image=nno_response.read(),
+                          driver_core_backing_store=0)
+SGT_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/SGT').read()
+DSG_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/DSG').read()[:, :-1]
+AY_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/PB').read()[:, :-1]
+A_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/A').read()[:, :-1]
+D_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/D').read()[:, :-1]
+AXX_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/AXX').read()[:, :-1]
+AYY_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/AYY').read()[:, :-1]
+
+online_data_dict = {"SGT" : SGT_nn_online, 
+                    "DSG" : DSG_nn_online, 
+                    "AY" : AY_nn_online, 
+                    "A" : A_nn_online, 
+                    "D" : D_nn_online, 
+                    "AXX" : AXX_nn_online, 
+                    "AYY" : AYY_nn_online}
 
 # for each choice of scale and scheme, sets the total possible orders and nomenclature
 EKM0p8fm = ScaleSchemeBunch('scattering_observables_EKM_R-0p8fm.h5', \
@@ -147,123 +155,45 @@ GT1p2fm = ScaleSchemeBunch('scattering_observables_Gezerlis-1p2fm.h5', \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens']], \
             "GT", "1p2fm")
 
-# scale_scheme_bunch_array = [EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm, \
-#             RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, EMN450MeV, EMN500MeV, \
-#             EMN550MeV, GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm]
-
-# # based on user input, allows only certain scale/scheme combinations through
-# if argv[1] == "EKM0p8fm" or argv[1] == "EKM0p9fm" or argv[1] == "EKM1p0fm" \
-#     or argv[1] == "EKM1p1fm" or argv[1] == "EKM1p2fm" or argv[1] == "EMN450MeV" \
-#     or argv[1] == "EMN500MeV" or argv[1] == "EMN550MeV" or argv[1] == "RKE400MeV" \
-#     or argv[1] == "RKE450MeV" or argv[1] == "RKE500MeV" or argv[1] == "RKE550MeV" \
-#     or argv[1] == "GT0p9fm" or argv[1] == "GT1p0fm" or argv[1] == "GT1p1fm" \
-#     or argv[1] == "GT1p2fm":
-#     # print(argv[1])
-#     scale_scheme_bunch_array = [b for b in scale_scheme_bunch_array \
-#             if (b.potential_string + b.cutoff_string) == argv[1]]
-#     # for b in scale_scheme_bunch_array: print(b.potential_string + b.cutoff_string)
-# elif argv[1] == "all_potentials":
-#     pass
-# else:
-#     raise NameError("Valid scheme/scale combinations: EKM0p8fm, EKM0p9fm, "+ 
-#             "EKM1p0fm, EKM1p1fm, EKM1p2fm, EMN450MeV, EMN500MeV, "+
-#             "EMN550MeV, RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, "+
-#             "GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm, all_potentials")
-    
-# # gets energies for evaluating observables from user
-# energies_input = argv[3]
-# E_input_array = [int(x) for x in list(energies_input.split(","))]
-        
-# # sets the method for parametrizing the dimensionless parameter Q
-# Q_param_method_array = ["poly", "max", "sum"]
-
-# # based on user input, allows only certain parametrizations through
-# if argv[5] == "poly" or argv[5] == "max" or argv[5] == "sum":
-#     # print(argv[5])
-#     Q_param_method_array = [b for b in Q_param_method_array \
-#             if b == argv[5]]
-#     # print(Q_param_method_array)
-# elif argv[5] == "all_Q":
-#     pass
-# else:
-#     raise NameError("Valid Q parametrizations: poly, max, sum, all_Q")
+# scale_scheme_bunch_array = [EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm, 
+#             RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, 
+#             EMN450MeV, EMN500MeV, EMN550MeV, 
+            # GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm]
 
 # creates the training and testing masks for observables plotted against angle
-Fullspaceanglessplit = TrainTestSplit("allangles", 6, 3, \
+Fullspaceanglessplit = TrainTestSplit("allangles", 6, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 1)
-Forwardanglessplit = TrainTestSplit("forwardangles", 6, 3, \
+Forwardanglessplit = TrainTestSplit("forwardangles", 6, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 5/6)
-Backwardanglessplit = TrainTestSplit("backwardangles", 6, 3, \
+Backwardanglessplit = TrainTestSplit("backwardangles", 6, 3, 
                                     xmin_train_factor = 1/6, xmax_train_factor = 1)
-traintestsplit_vsangle_array = [Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit]
+Forwardanglessplit2 = TrainTestSplit("forwardangles2", 6, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 5/6, 
+                                    xmin_test_factor = 0, xmax_test_factor = 5/6)
+Backwardanglessplit2 = TrainTestSplit("backwardangles2", 6, 3, 
+                                    xmin_train_factor = 1/6, xmax_train_factor = 1, 
+                                    xmin_test_factor = 1/6, xmax_test_factor = 1)
+traintestsplit_vsangle_array = [Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit, 
+                                Forwardanglessplit2, Backwardanglessplit2]
 
 # creates the training and testing masks for observables plotted against energy
-Nolowenergysplit = TrainTestSplit("nolowenergy", 3, 4, \
-                            offset_train_min_factor = 100/350, xmin_train_factor = 100/350, \
-                            offset_test_min_factor = 100/350, xmin_test_factor = 100/350, \
+Nolowenergysplit = TrainTestSplit("nolowenergy", 3, 4, 
+                            offset_train_min_factor = 100/350, xmin_train_factor = 100/350, 
+                            offset_test_min_factor = 100/350, xmin_test_factor = 100/350, 
                             offset_train_max_factor = -50/350, offset_test_max_factor = -50/350)
-Yeslowenergysplit = TrainTestSplit("yeslowenergy", 4, 4, \
-                            offset_train_min_factor = 0, xmin_train_factor = 0.01, \
-                            offset_test_min_factor = 0, xmin_test_factor = 0, \
+Yeslowenergysplit = TrainTestSplit("yeslowenergy", 4, 4, 
+                            offset_train_min_factor = 0, xmin_train_factor = 0.01, 
+                            offset_test_min_factor = 0, xmin_test_factor = 0, 
                             offset_train_max_factor = -50/350, offset_test_max_factor = -50/350)
-Allenergysplit = TrainTestSplit("allenergy", 4, 4, \
-                            offset_train_min_factor = 0, xmin_train_factor = 0, \
-                            offset_test_min_factor = 0, xmin_test_factor = 0, \
+Allenergysplit = TrainTestSplit("allenergy", 4, 4, 
+                            offset_train_min_factor = 0, xmin_train_factor = 0, 
+                            offset_test_min_factor = 0, xmin_test_factor = 0, 
                             offset_train_max_factor = -50/350, offset_test_max_factor = -50/350)
 traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit, Allenergysplit]
 
-# # based on user input, allows only certain train/test splits through
-# if argv[6] == "allangles" or argv[6] == "forwardangles" \
-#     or argv[6] == "backwardangles":
-#     # print(argv[6])
-#     train_test_split_array = [b for b in traintestsplit_vsangle_array \
-#             if b.name == argv[6]]
-#     # print(train_test_split_array)
-# elif argv[6] == "nolowenergy" or argv[6] == "yeslowenergy":
-#     # print(argv[6])
-#     train_test_split_array = [b for b in traintestsplit_vsenergy_array \
-#             if b.name == argv[6]]
-#     # print(train_test_split_array)
-# elif argv[6] == "all_vsangle_splits":
-#     train_test_split_array = traintestsplit_vsangle_array
-# elif argv[6] == "all_vsenergy_splits":
-#     train_test_split_array = traintestsplit_vsenergy_array
-# else:
-#     raise NameError("Valid train/test splits: allangles, forwardangles, "+
-#             "backwardangles, nolowenergy, yeslowenergy, all_vsangle_splits"+
-#             "all_vsenergy_splits")
-    
-# # bounds for 2D posterior PDF figures
-# PosteriorBounds_deg = PosteriorBounds(1e-6, 100, 100, 300, 900, 300)
-# PosteriorBounds_cos = PosteriorBounds(1e-6, 2, 100, 300, 900, 300)
-    
-# # gets orders for evaluation from user
-# orders_input = argv[7]
-
-# def README():
-#     print("Arguments for GPAnalysis():\n")
-#     print("scale_scheme_bunch_array (ScaleSchemeBunch list): EKM0p8fm, EKM0p9fm, EKM1p0fm, EKM1p1fm, EKM1p2fm, RKE400MeV, RKE450MeV, RKE500MeV, RKE550MeV, EMN450MeV, EMN500MeV, EMN550MeV, GT0p9fm, GT1p0fm, GT1p1fm, GT1p2fm")
-#     print("Default: [EKM0p9fm]\n")
-#     print("observable_input (str list): \"SGT\", \"DSG\", \"AY\", \"A\", \"D\", \"AXX\", \"AYY\"")
-#     print("Default: [\"DSG\"]\n")
-#     print("E_input_array (int list): any integer x such that 1 <= x <= 350")
-#     print("Must be [0] for SGT")
-#     print("Default: [150]\n")
-#     print("Q_param_method_array (str list): \"poly\", \"max\", \"cos\"")
-#     print("Default: [\"poly\"]\n")
-#     print("input_space_input (str list): \"Elab\", \"prel\" for SGT")
-#     print("input_space_input (str list): \"deg\", \"cos\", \"qcm\", \"qcm2\" for all other observables")
-#     print("Default: [\"cos\"]\n")
-#     print("train_test_split_array (TrainTestSplit list): Nolowenergysplit, Yeslowenergysplit for SGT")
-#     print("train_test_split_array (TrainTestSplit list): Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit for all other observables")
-#     print("Default: Fullspaceanglessplit\n")
-#     print("orders_input (int list, or str): 2, 3, 4, 5, 6")
-#     print("May be \"all\" to evaluate all orders for all potentials")
-#     print("Default: \"all\"\n")
-#     print("length_scale_input (LengthScale)")
-#     print("Default: LengthScale(0.25, 0.25, 4, whether_fit = True)\n")
-#     print("fixed_sd (float): any positive float")
-#     print("Default: None\n")
+# bounds for 2D posterior PDF figures
+PosteriorBounds_deg = PosteriorBounds(1e-6, 100, 100, 300, 900, 300)
+PosteriorBounds_cos = PosteriorBounds(1e-6, 2, 100, 300, 900, 300)
 
 def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm], 
                observable_input = ["DSG"], 
@@ -281,11 +211,15 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                plot_md_bool = True, 
                plot_pc_bool = True, 
                plot_ci_bool = True, 
+               plot_pdf_bool = True, 
+               plot_trunc_bool = True, 
                plot_plotzilla_bool = True, 
                save_coeffs_bool = True, 
                save_md_bool = True, 
                save_pc_bool = True, 
                save_ci_bool = True, 
+               save_pdf_bool = True, 
+               save_trunc_bool= True, 
                save_plotzilla_bool = True, 
                filename_addendum = ""):
     """
@@ -407,27 +341,6 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
         observable_array = [SGTBunch, DSGBunch, AYBunch, ABunch, DBunch, AXXBunch, AYYBunch]
         
         observable_array = [b for b in observable_array if b.name in observable_input]
-        
-        # # filters out observables based upon user input
-        # if argv[2] == "SGT" or argv[2] == "DSG" or argv[2] == "AY" or argv[2] == "A" \
-        #     or argv[2] == "D" or argv[2] == "AXX" or argv[2] == "AYY":
-        #     # print(argv[2])
-        #     observable_array = [b for b in observable_array if b.name == argv[2]]
-        #     # print(vsangle_observable_array)
-        # elif argv[2] == "our_obs":
-        #     observable_array = [SGTBunch, DSGBunch, ABunch]
-        # elif argv[2] == "all_obs":
-        #     pass
-        # else:
-        #     raise NameError("Valid observables: SGT, DSG, AY, A, D, AXX, AYY, our_obs, "+
-        #             "all_obs")
-            
-        # # turns the string argument for orders into an array for orders
-        # if orders_input == "all":
-        #     orders_input_array = scalescheme.orders_full
-        # else:
-        #     orders_input_array = [int(x) for x in list(orders_input.split(","))]
-        #     # print(orders_input_array)
             
         # turns the string argument for orders into an array for orders
         if orders_input == "all":
@@ -464,66 +377,89 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
             # runs through the energies at which to evaluate the observables
             for j, E_lab in enumerate(observable.energies):
                 # creates the bunches for the input spaces
-                DegBunch = InputSpaceBunch("deg", \
-                                    degrees, \
-                                    E_to_p(E_lab, "np"), \
-                                    r'$\theta$ (deg)', \
-                                    [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, \
+                DegBunch = InputSpaceBunch("deg", 
+                                    degrees, 
+                                    E_to_p(E_lab, "np"), 
+                                    r'$\theta$ (deg)', 
+                                    [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
                                       '\,\mathrm{MeV})$'])
+                # DegBunch = InputSpaceBunch("deg", 
+                #                     degrees, 
+                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                #                     r'$\theta$ (deg)', 
+                #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
+                #                       '\,\mathrm{MeV})$'])
+                # DegBunch = InputSpaceBunch("deg", 
+                #                     degrees, 
+                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                #                                for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                #                     r'$\theta$ (deg)', 
+                #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
+                #                       '\,\mathrm{MeV})$'])
                 
                 # note that the input space here is -cos(theta), not cos(theta) (as it once was)
-                CosBunch = InputSpaceBunch("cos", \
-                                    -np.cos(np.radians(degrees)), \
-                                    np.array( [softmax_mom(E_to_p(E_lab, "np"), q) \
-                                              for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), \
-                                    r'$-\mathrm{cos}(\theta)$', \
-                                    [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', \
+                CosBunch = InputSpaceBunch("cos", 
+                                    -np.cos(np.radians(degrees)), 
+                                    E_to_p(E_lab, "np"), 
+                                    r'$-\mathrm{cos}(\theta)$', 
+                                    [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
                                       E_lab, '\,\mathrm{MeV})$'])
+                # CosBunch = InputSpaceBunch("cos", 
+                #                     -np.cos(np.radians(degrees)), 
+                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                #                     r'$-\mathrm{cos}(\theta)$', 
+                #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
+                #                       E_lab, '\,\mathrm{MeV})$'])
+                # CosBunch = InputSpaceBunch("cos", 
+                #                     -np.cos(np.radians(degrees)), 
+                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                #                     r'$-\mathrm{cos}(\theta)$', 
+                #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
+                #                       E_lab, '\,\mathrm{MeV})$'])
         
-                QcmBunch = InputSpaceBunch("qcm", \
-                                    deg_to_qcm(E_to_p(E_lab, "np"), degrees), \
-                                    np.array( [softmax_mom(E_to_p(E_lab, "np"), q) \
-                                              for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), \
-                                    r'$q_{\mathrm{cm}}$ (MeV)', \
-                                    [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', \
+                QcmBunch = InputSpaceBunch("qcm", 
+                                    deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                                    E_to_p(E_lab, "np"), 
+                                    r'$q_{\mathrm{cm}}$ (MeV)', 
+                                    [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
                                       E_lab, '\,\mathrm{MeV})$'])
+                # QcmBunch = InputSpaceBunch("qcm", 
+                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                #                     r'$q_{\mathrm{cm}}$ (MeV)', \
+                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
+                #                       E_lab, '\,\mathrm{MeV})$'])
+                # QcmBunch = InputSpaceBunch("qcm", 
+                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                #                     r'$q_{\mathrm{cm}}$ (MeV)', 
+                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
+                #                       E_lab, '\,\mathrm{MeV})$'])
         
-                Qcm2Bunch = InputSpaceBunch("qcm2", \
-                                    deg_to_qcm2(E_to_p(E_lab, "np"), degrees), \
-                                    np.array( [softmax_mom(E_to_p(E_lab, "np"), q) \
-                                              for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), \
-                                    r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', \
-                                    [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', \
+                Qcm2Bunch = InputSpaceBunch("qcm2", 
+                                    deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
+                                    E_to_p(E_lab, "np"), 
+                                    r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
+                                    [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
                                       E_lab, '\,\mathrm{MeV})$'])
-                    
-                # ElabBunch = InputSpaceBunch("Elab", \
-                #                     t_lab, \
-                #                     E_to_p(t_lab, "np"), \
-                #                     r'$E_{\mathrm{lab}}$ (MeV)', \
-                #                     [r'$', observable.title, r'(E_{\mathrm{lab}})$'])
-            
-                # PrelBunch = InputSpaceBunch("prel", \
-                #                     E_to_p(t_lab, "np"), \
-                #                     E_to_p(t_lab, "np"), \
-                #                     r'$p_{\mathrm{rel}}$ (MeV)', \
-                #                     [r'$', observable.title, r'(p_{\mathrm{rel}})$'])
+                # Qcm2Bunch = InputSpaceBunch("qcm2", 
+                #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
+                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
+                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
+                #                       E_lab, '\,\mathrm{MeV})$'])
+                # Qcm2Bunch = InputSpaceBunch("qcm2", 
+                #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
+                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
+                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
+                #                       E_lab, '\,\mathrm{MeV})$'])
             
                 vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch]
                 vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
-                
-                # # filters out input spaces based upon user input
-                # if argv[4] == "deg" or argv[4] == "cos" or argv[4] == "qcm" \
-                #     or argv[4] == "qcm2" or argv[4] == "Elab" or argv[4] == "prel":
-                #     # print(argv[4])
-                #     vsquantity_array = [b for b in vsquantity_array if b.name == argv[4]]
-                #     # print(vsangle_quantity_array)
-                # elif argv[4] == "all_vsangle_inputs":
-                #     vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch]
-                # elif argv[4] == "all_vsenergy_inputs":
-                #     vsquantity_array = [ElabBunch, PrelBunch]
-                # else:
-                #     raise NameError("Valid input spaces: deg, cos, qcm, qcm2, "+
-                #             "Elab, prel, all_inputs")
                 
                 # creates each input space bunch's title
                 for bunch in vsquantity_array: bunch.make_title()
@@ -532,6 +468,12 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                 for k, Q_param_method in enumerate(Q_param_method_array):
                     # runs through the input spaces
                     for i, vs_quantity in enumerate(vsquantity_array):
+                        MyPosteriorBounds = PosteriorBounds((max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 9, 
+                                                            (max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 2, 
+                                                            100, 
+                                                            Lambdab * 0.5, 
+                                                            Lambdab * 1.5, 
+                                                            100)
                         # runs through the training and testing masks
                         for l, traintestsplit in enumerate(train_test_split_array):
                             # conforms the training and testing masks to each input space
@@ -568,7 +510,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                             MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
                                     traintestsplit, GPHyper_DSG, Orders_DSG, 
                                     FileName_DSG, fixed_quantity = ["energy", E_lab, t_lab, "MeV"], 
-                                    x_quantity = ["angle", degrees, "degrees"], constrained = False)
+                                    x_quantity = ["angle", degrees, "degrees"], 
+                                    posteriorgrid = MyPosteriorBounds)
                             
                             # plots figures
                             if plot_coeffs_bool:
@@ -579,6 +522,11 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 MyPlot.PlotPC(whether_save = save_pc_bool)
                             if plot_ci_bool:
                                 MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
+                            if plot_pdf_bool:
+                                MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
+                            # if plot_trunc_bool:
+                            #     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
+                            #                                 whether_save = save_trunc_bool)
                             if plot_plotzilla_bool:
                                 MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
             
@@ -598,20 +546,6 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
             
                 vsquantity_array = [ElabBunch, PrelBunch]
                 vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
-
-                # # filters out input spaces based upon user input
-                # if argv[4] == "deg" or argv[4] == "cos" or argv[4] == "qcm" \
-                #     or argv[4] == "qcm2" or argv[4] == "Elab" or argv[4] == "prel":
-                #     # print(argv[4])
-                #     vsquantity_array = [b for b in vsquantity_array if b.name == argv[4]]
-                #     # print(vsangle_quantity_array)
-                # elif argv[4] == "all_vsangle_inputs":
-                #     vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch]
-                # elif argv[4] == "all_vsenergy_inputs":
-                #     vsquantity_array = [ElabBunch, PrelBunch]
-                # else:
-                #     raise NameError("Valid input spaces: deg, cos, qcm, qcm2, "+
-                #             "Elab, prel, all_inputs")
                 
                 # creates each input space bunch's title
                 for bunch in vsquantity_array: bunch.make_title()
@@ -619,6 +553,12 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                 for k, Q_param_method in enumerate(Q_param_method_array):
                     # runs through the input spaces
                     for i, vs_quantity in enumerate(vsquantity_array):
+                        MyPosteriorBounds = PosteriorBounds((max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 9, 
+                                                            (max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 2, 
+                                                            100, 
+                                                            Lambdab * 0.5, 
+                                                            Lambdab * 1.5, 
+                                                            100)
                         # runs through the training and testing masks
                         for l, traintestsplit in enumerate(train_test_split_array):
                             # conforms the training and testing masks to each input space
@@ -658,7 +598,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                             MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
                                     traintestsplit, GPHyper_DSG, Orders_DSG, 
                                     FileName_DSG, fixed_quantity = ["angle", angle_lab, degrees, "degrees"], 
-                                    x_quantity = ["energy", t_lab, "MeV"], constrained = False)
+                                    x_quantity = ["energy", t_lab, "MeV"], 
+                                    posteriorgrid = MyPosteriorBounds)
                             
                             # plots figures
                             if plot_coeffs_bool:
@@ -669,6 +610,11 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 MyPlot.PlotPC(whether_save = save_pc_bool)
                             if plot_ci_bool:
                                 MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
+                            if plot_pdf_bool:
+                                MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
+                            # if plot_trunc_bool:
+                            #     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
+                            #                                 whether_save = save_trunc_bool)
                             if plot_plotzilla_bool:
                                 MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
     # except:
