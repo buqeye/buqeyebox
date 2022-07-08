@@ -78,6 +78,8 @@ D_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/D').read()[:, :-1]
 AXX_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/AXX').read()[:, :-1]
 AYY_nn_online = nn_online_file.get_node('/' + nn_online_pot + '/AYY').read()[:, :-1]
 
+# creates a dictionary that links the NN online data for each observable to the 
+# eventual predictions for that observable by a given potential scheme and scale
 online_data_dict = {"SGT" : SGT_nn_online, 
                     "DSG" : DSG_nn_online, 
                     "AY" : AY_nn_online, 
@@ -191,10 +193,6 @@ Allenergysplit = TrainTestSplit("allenergy", 4, 4,
                             offset_train_max_factor = -50/350, offset_test_max_factor = -50/350)
 traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit, Allenergysplit]
 
-# bounds for 2D posterior PDF figures
-PosteriorBounds_deg = PosteriorBounds(1e-6, 100, 100, 300, 900, 300)
-PosteriorBounds_cos = PosteriorBounds(1e-6, 2, 100, 300, 900, 300)
-
 def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm], 
                observable_input = ["DSG"], 
                E_input_array = [150],
@@ -297,6 +295,12 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
     savefile_type (str): string for specifying the type of file to be saved.
     Default: 'png'
     
+    plot_..._bool (bool): boolean for whether to plot different figures
+    Default: True
+    
+    save_..._bool (bool): boolean for whether to save different figures
+    Default: True
+    
     filename_addendum (str): string for distinguishing otherwise similarly named
         files.
     Default: ''
@@ -304,321 +308,329 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
     mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, 
            format=savefile_type)
     
-    # try:
-    # runs through the potentials
-    for o, scalescheme in enumerate(scale_scheme_bunch_array):
-        # gets observable data from a local file
-        # default location is the same as this program's
-        try:
-            SGT = scalescheme.get_data('SGT')
-            DSG = scalescheme.get_data('DSG')
-            AY = scalescheme.get_data('PB')
-            A = scalescheme.get_data('A')
-            D = scalescheme.get_data('D')
-            AXX = scalescheme.get_data('AXX')
-            AYY = scalescheme.get_data('AYY')
-            t_lab = scalescheme.get_data('t_lab')
-            degrees = scalescheme.get_data('degrees')
-        except:
-            raise Exception("Data could not be found in the location specified.")
-        
-        # creates the bunch for each observable to be plotted against angle
-        SGTBunch = ObservableBunch("SGT", SGT, E_input_array, deg_input_array, 
-                                   '\sigma_{\mathrm{tot}}', "dimensionful")
-        DSGBunch = ObservableBunch("DSG", DSG, E_input_array, deg_input_array, 
-                                   '\sigma', "dimensionful")
-        AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
-                                  'A_{y}', "dimensionless")
-        ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
-                                 'A', "dimensionless")
-        DBunch = ObservableBunch("D", D, E_input_array, deg_input_array, 
-                                 'D', "dimensionless")
-        AXXBunch = ObservableBunch("AXX", AXX, E_input_array, deg_input_array,
-                                   'A_{xx}', "dimensionless")
-        AYYBunch = ObservableBunch("AYY", AYY, E_input_array, deg_input_array,
-                                   'A_{yy}', "dimensionless")
-    
-        observable_array = [SGTBunch, DSGBunch, AYBunch, ABunch, DBunch, AXXBunch, AYYBunch]
-        
-        observable_array = [b for b in observable_array if b.name in observable_input]
+    try:
+        # runs through the potentials
+        for o, scalescheme in enumerate(scale_scheme_bunch_array):
+            # gets observable data from a local file
+            # default location is the same as this program's
+            try:
+                SGT = scalescheme.get_data('SGT')
+                DSG = scalescheme.get_data('DSG')
+                AY = scalescheme.get_data('PB')
+                A = scalescheme.get_data('A')
+                D = scalescheme.get_data('D')
+                AXX = scalescheme.get_data('AXX')
+                AYY = scalescheme.get_data('AYY')
+                t_lab = scalescheme.get_data('t_lab')
+                degrees = scalescheme.get_data('degrees')
+            except:
+                raise Exception("Data could not be found in the location specified.")
             
-        # turns the string argument for orders into an array for orders
-        if orders_input == "all":
-            orders_input_array = scalescheme.orders_full
-        else:
-            orders_input_array = orders_input.copy()
-            orders_input_array.sort()
+            # creates the bunch for each observable to be plotted against angle
+            SGTBunch = ObservableBunch("SGT", SGT, E_input_array, deg_input_array, 
+                                       '\sigma_{\mathrm{tot}}', "dimensionful")
+            DSGBunch = ObservableBunch("DSG", DSG, E_input_array, deg_input_array, 
+                                       '\sigma', "dimensionful")
+            AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
+                                      'A_{y}', "dimensionless")
+            ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
+                                     'A', "dimensionless")
+            DBunch = ObservableBunch("D", D, E_input_array, deg_input_array, 
+                                     'D', "dimensionless")
+            AXXBunch = ObservableBunch("AXX", AXX, E_input_array, deg_input_array,
+                                       'A_{xx}', "dimensionless")
+            AYYBunch = ObservableBunch("AYY", AYY, E_input_array, deg_input_array,
+                                       'A_{yy}', "dimensionless")
+        
+            observable_array = [SGTBunch, DSGBunch, AYBunch, ABunch, DBunch, AXXBunch, AYYBunch]
             
-        # turns the array for orders into an array for colors
-        colors_index_array = orders_input_array.copy()
-        for i, o in enumerate(colors_index_array):
-            colors_index_array[i] = o - 2
-        # print(colors_index_array)
-        
-        # adds a 0 as the first entry in the array for orders if one is not already there
-        if orders_input_array[0] != 0:
-            orders_input_array = [0] + orders_input_array
-        # print(orders_input_array)
-        
-        # creates a mask for orders and colors
-        mask_orders = np.zeros(len(scalescheme.cmaps), dtype = bool)
-        for i, o in enumerate(colors_index_array):
-            mask_orders[o] = True
-        # print(mask_orders)
-        
-        # This ensures we only analyze the non-trivial information at
-        # O(Q^2), O(Q^3), O(Q^4), and O(Q^5)
-        excluded = [0]
-        mask_full = ~ np.isin(scalescheme.orders_full, excluded)
-        Lambdab = 600
-        
-        # runs through the observables
-        for m, observable in enumerate(observable_array):
-            # runs through the energies at which to evaluate the observables
-            for j, E_lab in enumerate(observable.energies):
-                # creates the bunches for the input spaces
-                DegBunch = InputSpaceBunch("deg", 
-                                    degrees, 
-                                    E_to_p(E_lab, "np"), 
-                                    r'$\theta$ (deg)', 
-                                    [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
-                                      '\,\mathrm{MeV})$'])
-                # DegBunch = InputSpaceBunch("deg", 
-                #                     degrees, 
-                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                #                     r'$\theta$ (deg)', 
-                #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
-                #                       '\,\mathrm{MeV})$'])
-                # DegBunch = InputSpaceBunch("deg", 
-                #                     degrees, 
-                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                #                                for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                #                     r'$\theta$ (deg)', 
-                #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
-                #                       '\,\mathrm{MeV})$'])
+            observable_array = [b for b in observable_array if b.name in observable_input]
                 
-                # note that the input space here is -cos(theta), not cos(theta) (as it once was)
-                CosBunch = InputSpaceBunch("cos", 
-                                    -np.cos(np.radians(degrees)), 
-                                    E_to_p(E_lab, "np"), 
-                                    r'$-\mathrm{cos}(\theta)$', 
-                                    [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
-                                      E_lab, '\,\mathrm{MeV})$'])
-                # CosBunch = InputSpaceBunch("cos", 
-                #                     -np.cos(np.radians(degrees)), 
-                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                #                     r'$-\mathrm{cos}(\theta)$', 
-                #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
-                #                       E_lab, '\,\mathrm{MeV})$'])
-                # CosBunch = InputSpaceBunch("cos", 
-                #                     -np.cos(np.radians(degrees)), 
-                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                #                     r'$-\mathrm{cos}(\theta)$', 
-                #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
-                #                       E_lab, '\,\mathrm{MeV})$'])
-        
-                QcmBunch = InputSpaceBunch("qcm", 
-                                    deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                                    E_to_p(E_lab, "np"), 
-                                    r'$q_{\mathrm{cm}}$ (MeV)', 
-                                    [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
-                                      E_lab, '\,\mathrm{MeV})$'])
-                # QcmBunch = InputSpaceBunch("qcm", 
-                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                #                     r'$q_{\mathrm{cm}}$ (MeV)', \
-                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
-                #                       E_lab, '\,\mathrm{MeV})$'])
-                # QcmBunch = InputSpaceBunch("qcm", 
-                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                #                     r'$q_{\mathrm{cm}}$ (MeV)', 
-                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
-                #                       E_lab, '\,\mathrm{MeV})$'])
-        
-                Qcm2Bunch = InputSpaceBunch("qcm2", 
-                                    deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
-                                    E_to_p(E_lab, "np"), 
-                                    r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
-                                    [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
-                                      E_lab, '\,\mathrm{MeV})$'])
-                # Qcm2Bunch = InputSpaceBunch("qcm2", 
-                #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
-                #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
-                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
-                #                       E_lab, '\,\mathrm{MeV})$'])
-                # Qcm2Bunch = InputSpaceBunch("qcm2", 
-                #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
-                #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
-                #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
-                #                       E_lab, '\,\mathrm{MeV})$'])
-            
-                vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch]
-                vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
+            # turns the string argument for orders into an array for orders
+            if orders_input == "all":
+                orders_input_array = scalescheme.orders_full
+            else:
+                orders_input_array = orders_input.copy()
+                orders_input_array.sort()
                 
-                # creates each input space bunch's title
-                for bunch in vsquantity_array: bunch.make_title()
-        
-                # runs through the parametrization methods
-                for k, Q_param_method in enumerate(Q_param_method_array):
-                    # runs through the input spaces
-                    for i, vs_quantity in enumerate(vsquantity_array):
-                        MyPosteriorBounds = PosteriorBounds((max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 9, 
-                                                            (max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 2, 
-                                                            100, 
-                                                            Lambdab * 0.5, 
-                                                            Lambdab * 1.5, 
-                                                            100)
-                        # runs through the training and testing masks
-                        for l, traintestsplit in enumerate(train_test_split_array):
-                            # conforms the training and testing masks to each input space
-                            traintestsplit.make_masks(vs_quantity.input_space, observable.data)
-                            # print("data = " + str(observable.data))
-                            
-                            # chooses a starting guess for the GP length scale optimization procedure
-                            LengthScaleGuess = length_scale_input
-                            LengthScaleGuess.make_guess(vs_quantity.input_space)
-                            
-                            # creates the GP with all its hyperparameters
-                            ratio_dsg = Q_approx(vs_quantity.mom, Q_param_method, Lambda_b = Lambdab)
-                            # print("ratio = " + str(ratio_dsg))
-                            center = 0
-                            df = 1
-                            disp = 0
-                            std_scale = 1
-                            GPHyper_DSG = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, \
-                                            df = df, disp = disp, scale = std_scale, seed = 4, 
-                                            sd = fixed_sd)
-        
-                            # information for naming the savefiles
-                            FileName_DSG = FileNaming(scalescheme.potential_string, \
-                                            scalescheme.cutoff_string, Q_param_method, 
-                                            filename_addendum = filename_addendum)
-        
-                            # information on the orders for each potential
-                            Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, \
-                                            scalescheme.colors, scalescheme.light_colors, \
-                                            orders_restricted = orders_input_array, \
-                                            mask_restricted = mask_orders)
-                            
-                            # creates the object used to generate and plot statistical diagnostics
-                            MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
-                                    traintestsplit, GPHyper_DSG, Orders_DSG, 
-                                    FileName_DSG, fixed_quantity = ["energy", E_lab, t_lab, "MeV"], 
-                                    x_quantity = ["angle", degrees, "degrees"], 
-                                    posteriorgrid = MyPosteriorBounds)
-                            
-                            # plots figures
-                            if plot_coeffs_bool:
-                                MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
-                            if plot_md_bool:
-                                MyPlot.PlotMD(whether_save = save_md_bool)
-                            if plot_pc_bool:
-                                MyPlot.PlotPC(whether_save = save_pc_bool)
-                            if plot_ci_bool:
-                                MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
-                            if plot_pdf_bool:
-                                MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
-                            # if plot_trunc_bool:
-                            #     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
-                            #                                 whether_save = save_trunc_bool)
-                            if plot_plotzilla_bool:
-                                MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
+            # turns the array for orders into an array for colors
+            colors_index_array = orders_input_array.copy()
+            for i, o in enumerate(colors_index_array):
+                colors_index_array[i] = o - 2
+            # print(colors_index_array)
             
-            for j, angle_lab in enumerate(observable.angles):
-                # creates the bunches for the input spaces
-                ElabBunch = InputSpaceBunch("Elab", \
-                                    t_lab, \
-                                    E_to_p(t_lab, "np"), \
-                                    r'$E_{\mathrm{lab}}$ (MeV)', \
-                                    [r'$', observable.title, r'(E_{\mathrm{lab}})$'])
+            # adds a 0 as the first entry in the array for orders if one is not already there
+            if orders_input_array[0] != 0:
+                orders_input_array = [0] + orders_input_array
+            # print(orders_input_array)
             
-                PrelBunch = InputSpaceBunch("prel", \
-                                    E_to_p(t_lab, "np"), \
-                                    E_to_p(t_lab, "np"), \
-                                    r'$p_{\mathrm{rel}}$ (MeV)', \
-                                    [r'$', observable.title, r'(p_{\mathrm{rel}})$'])
+            # creates a mask for orders and colors
+            mask_orders = np.zeros(len(scalescheme.cmaps), dtype = bool)
+            for i, o in enumerate(colors_index_array):
+                mask_orders[o] = True
+            # print(mask_orders)
             
-                vsquantity_array = [ElabBunch, PrelBunch]
-                vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
+            # This ensures we only analyze the non-trivial information at
+            # O(Q^2), O(Q^3), O(Q^4), and O(Q^5)
+            excluded = [0]
+            mask_full = ~ np.isin(scalescheme.orders_full, excluded)
+            Lambdab = 600
+            
+            # runs through the observables
+            for m, observable in enumerate(observable_array):
+                # runs through the energies at which to evaluate the observables
+                for j, E_lab in enumerate(observable.energies):
+                    # creates the bunches for the vs-angle input spaces
+                    DegBunch = InputSpaceBunch("deg", 
+                                        degrees, 
+                                        E_to_p(E_lab, "np"), 
+                                        r'$\theta$ (deg)', 
+                                        [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
+                                          '\,\mathrm{MeV})$'])
+                    # DegBunch = InputSpaceBunch("deg", 
+                    #                     degrees, 
+                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                    #                     r'$\theta$ (deg)', 
+                    #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
+                    #                       '\,\mathrm{MeV})$'])
+                    # DegBunch = InputSpaceBunch("deg", 
+                    #                     degrees, 
+                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                    #                                for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                    #                     r'$\theta$ (deg)', 
+                    #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
+                    #                       '\,\mathrm{MeV})$'])
+                    
+                    # note that the input space here is -cos(theta), not cos(theta) (as it once was)
+                    CosBunch = InputSpaceBunch("cos", 
+                                        -np.cos(np.radians(degrees)), 
+                                        E_to_p(E_lab, "np"), 
+                                        r'$-\mathrm{cos}(\theta)$', 
+                                        [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
+                                          E_lab, '\,\mathrm{MeV})$'])
+                    # CosBunch = InputSpaceBunch("cos", 
+                    #                     -np.cos(np.radians(degrees)), 
+                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                    #                     r'$-\mathrm{cos}(\theta)$', 
+                    #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
+                    #                       E_lab, '\,\mathrm{MeV})$'])
+                    # CosBunch = InputSpaceBunch("cos", 
+                    #                     -np.cos(np.radians(degrees)), 
+                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                    #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                    #                     r'$-\mathrm{cos}(\theta)$', 
+                    #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
+                    #                       E_lab, '\,\mathrm{MeV})$'])
+            
+                    QcmBunch = InputSpaceBunch("qcm", 
+                                        deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                                        E_to_p(E_lab, "np"), 
+                                        r'$q_{\mathrm{cm}}$ (MeV)', 
+                                        [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
+                                          E_lab, '\,\mathrm{MeV})$'])
+                    # QcmBunch = InputSpaceBunch("qcm", 
+                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                    #                     r'$q_{\mathrm{cm}}$ (MeV)', \
+                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
+                    #                       E_lab, '\,\mathrm{MeV})$'])
+                    # QcmBunch = InputSpaceBunch("qcm", 
+                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                    #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                    #                     r'$q_{\mathrm{cm}}$ (MeV)', 
+                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
+                    #                       E_lab, '\,\mathrm{MeV})$'])
+            
+                    Qcm2Bunch = InputSpaceBunch("qcm2", 
+                                        deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
+                                        E_to_p(E_lab, "np"), 
+                                        r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
+                                        [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
+                                          E_lab, '\,\mathrm{MeV})$'])
+                    # Qcm2Bunch = InputSpaceBunch("qcm2", 
+                    #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
+                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
+                    #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
+                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
+                    #                       E_lab, '\,\mathrm{MeV})$'])
+                    # Qcm2Bunch = InputSpaceBunch("qcm2", 
+                    #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
+                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
+                    #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
+                    #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
+                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
+                    #                       E_lab, '\,\mathrm{MeV})$'])
                 
-                # creates each input space bunch's title
-                for bunch in vsquantity_array: bunch.make_title()
-                # runs through the parametrization methods
-                for k, Q_param_method in enumerate(Q_param_method_array):
-                    # runs through the input spaces
-                    for i, vs_quantity in enumerate(vsquantity_array):
-                        MyPosteriorBounds = PosteriorBounds((max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 9, 
-                                                            (max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 2, 
-                                                            100, 
-                                                            Lambdab * 0.5, 
-                                                            Lambdab * 1.5, 
-                                                            100)
-                        # runs through the training and testing masks
-                        for l, traintestsplit in enumerate(train_test_split_array):
-                            # conforms the training and testing masks to each input space
-                            try:
-                                traintestsplit.make_masks(vs_quantity.input_space, observable.data.swapaxes(1, 2))
-                            except:
+                    vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch]
+                    vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
+                    
+                    # creates each input space bunch's title
+                    for bunch in vsquantity_array: bunch.make_title()
+            
+                    # runs through the parametrization methods
+                    for k, Q_param_method in enumerate(Q_param_method_array):
+                        # runs through the input spaces
+                        for i, vs_quantity in enumerate(vsquantity_array):
+                            # creates the posterior bounds for the Lambda-ell
+                            # posterior probability distribution function scaled using 
+                            # the current value of Lambdab and an estimate of 
+                            # 1/4 of the total input space size for the correlation 
+                            # length
+                            MyPosteriorBounds = PosteriorBounds((max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 9, 
+                                                                (max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 2, 
+                                                                100, 
+                                                                Lambdab * 0.5, 
+                                                                Lambdab * 1.5, 
+                                                                100)
+                            # runs through the training and testing masks
+                            for l, traintestsplit in enumerate(train_test_split_array):
+                                # conforms the training and testing masks to each input space
                                 traintestsplit.make_masks(vs_quantity.input_space, observable.data)
-                            
-                            # chooses a starting guess for the GP length scale optimization procedure
-                            LengthScaleGuess = length_scale_input
-                            LengthScaleGuess.make_guess(vs_quantity.input_space)
-                            
-                            # creates the GP with all its hyperparameters
-                            ratio_dsg = Q_approx(vs_quantity.mom, Q_param_method, Lambda_b = Lambdab)
-                            # print("ratio = " + str(ratio_dsg))
-                            center = 0
-                            df = 1
-                            disp = 0
-                            std_scale = 1
-                            GPHyper_DSG = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, \
-                                            df = df, disp = disp, scale = std_scale, seed = 4, 
-                                            sd = fixed_sd)
-        
-                            # information for naming the savefiles
-                            FileName_DSG = FileNaming(scalescheme.potential_string, \
-                                            scalescheme.cutoff_string, Q_param_method, 
-                                            filename_addendum = filename_addendum)
-        
-                            # information on the orders for each potential
-                            Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, \
-                                            scalescheme.colors, scalescheme.light_colors, \
-                                            orders_restricted = orders_input_array, \
-                                            mask_restricted = mask_orders)
-                            
-                            
-                            # creates the object used to generate and plot statistical diagnostics
-                            MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
-                                    traintestsplit, GPHyper_DSG, Orders_DSG, 
-                                    FileName_DSG, fixed_quantity = ["angle", angle_lab, degrees, "degrees"], 
-                                    x_quantity = ["energy", t_lab, "MeV"], 
-                                    posteriorgrid = MyPosteriorBounds)
-                            
-                            # plots figures
-                            if plot_coeffs_bool:
-                                MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
-                            if plot_md_bool:
-                                MyPlot.PlotMD(whether_save = save_md_bool)
-                            if plot_pc_bool:
-                                MyPlot.PlotPC(whether_save = save_pc_bool)
-                            if plot_ci_bool:
-                                MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
-                            if plot_pdf_bool:
-                                MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
-                            # if plot_trunc_bool:
-                            #     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
-                            #                                 whether_save = save_trunc_bool)
-                            if plot_plotzilla_bool:
-                                MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
-    # except:
-    #     print("Error encountered in running loop.")
+                                # print("data = " + str(observable.data))
+                                
+                                # chooses a starting guess for the GP length scale optimization procedure
+                                LengthScaleGuess = length_scale_input
+                                LengthScaleGuess.make_guess(vs_quantity.input_space)
+                                
+                                # creates the GP with all its hyperparameters
+                                ratio_dsg = Q_approx(vs_quantity.mom, Q_param_method, Lambda_b = Lambdab)
+                                center = 0
+                                df = 1
+                                disp = 0
+                                std_scale = 1
+                                GPHyper_DSG = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, \
+                                                df = df, disp = disp, scale = std_scale, seed = 4, 
+                                                sd = fixed_sd)
+            
+                                # information for naming the savefiles
+                                FileName_DSG = FileNaming(scalescheme.potential_string, \
+                                                scalescheme.cutoff_string, Q_param_method, 
+                                                filename_addendum = filename_addendum)
+            
+                                # information on the orders for each potential
+                                Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, \
+                                                scalescheme.colors, scalescheme.light_colors, \
+                                                orders_restricted = orders_input_array, \
+                                                mask_restricted = mask_orders)
+                                
+                                # creates the object used to generate and plot statistical diagnostics
+                                MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
+                                        traintestsplit, GPHyper_DSG, Orders_DSG, 
+                                        FileName_DSG, fixed_quantity = ["energy", E_lab, t_lab, "MeV"], 
+                                        x_quantity = ["angle", degrees, "degrees"], 
+                                        posteriorgrid = MyPosteriorBounds)
+                                
+                                # plots figures
+                                if plot_coeffs_bool:
+                                    MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
+                                if plot_md_bool:
+                                    MyPlot.PlotMD(whether_save = save_md_bool)
+                                if plot_pc_bool:
+                                    MyPlot.PlotPC(whether_save = save_pc_bool)
+                                if plot_ci_bool:
+                                    MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
+                                if plot_pdf_bool:
+                                    MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
+                                # if plot_trunc_bool:
+                                #     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
+                                #                                 whether_save = save_trunc_bool)
+                                if plot_plotzilla_bool:
+                                    MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
+                
+                for j, angle_lab in enumerate(observable.angles):
+                    # creates the bunches for the vs-energy input spaces
+                    ElabBunch = InputSpaceBunch("Elab", \
+                                        t_lab, \
+                                        E_to_p(t_lab, "np"), \
+                                        r'$E_{\mathrm{lab}}$ (MeV)', \
+                                        [r'$', observable.title, r'(E_{\mathrm{lab}})$'])
+                
+                    PrelBunch = InputSpaceBunch("prel", \
+                                        E_to_p(t_lab, "np"), \
+                                        E_to_p(t_lab, "np"), \
+                                        r'$p_{\mathrm{rel}}$ (MeV)', \
+                                        [r'$', observable.title, r'(p_{\mathrm{rel}})$'])
+                
+                    vsquantity_array = [ElabBunch, PrelBunch]
+                    vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
+                    
+                    # creates each input space bunch's title
+                    for bunch in vsquantity_array: bunch.make_title()
+                    # runs through the parametrization methods
+                    for k, Q_param_method in enumerate(Q_param_method_array):
+                        # runs through the input spaces
+                        for i, vs_quantity in enumerate(vsquantity_array):
+                            # creates the posterior bounds for the Lambda-ell
+                            # posterior probability distribution function scaled using 
+                            # the current value of Lambdab and an estimate of 
+                            # 1/4 of the total input space size for the correlation 
+                            # length
+                            MyPosteriorBounds = PosteriorBounds((max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 9, 
+                                                                (max(vs_quantity.input_space) - min(vs_quantity.input_space)) / 2, 
+                                                                100, 
+                                                                Lambdab * 0.5, 
+                                                                Lambdab * 1.5, 
+                                                                100)
+                            # runs through the training and testing masks
+                            for l, traintestsplit in enumerate(train_test_split_array):
+                                # conforms the training and testing masks to each input space
+                                try:
+                                    traintestsplit.make_masks(vs_quantity.input_space, observable.data.swapaxes(1, 2))
+                                except:
+                                    traintestsplit.make_masks(vs_quantity.input_space, observable.data)
+                                
+                                # chooses a starting guess for the GP length scale optimization procedure
+                                LengthScaleGuess = length_scale_input
+                                LengthScaleGuess.make_guess(vs_quantity.input_space)
+                                
+                                # creates the GP with all its hyperparameters
+                                ratio_dsg = Q_approx(vs_quantity.mom, Q_param_method, Lambda_b = Lambdab)
+                                center = 0
+                                df = 1
+                                disp = 0
+                                std_scale = 1
+                                GPHyper_DSG = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, \
+                                                df = df, disp = disp, scale = std_scale, seed = 4, 
+                                                sd = fixed_sd)
+            
+                                # information for naming the savefiles
+                                FileName_DSG = FileNaming(scalescheme.potential_string, \
+                                                scalescheme.cutoff_string, Q_param_method, 
+                                                filename_addendum = filename_addendum)
+            
+                                # information on the orders for each potential
+                                Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, \
+                                                scalescheme.colors, scalescheme.light_colors, \
+                                                orders_restricted = orders_input_array, \
+                                                mask_restricted = mask_orders)
+                                
+                                
+                                # creates the object used to generate and plot statistical diagnostics
+                                MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
+                                        traintestsplit, GPHyper_DSG, Orders_DSG, 
+                                        FileName_DSG, fixed_quantity = ["angle", angle_lab, degrees, "degrees"], 
+                                        x_quantity = ["energy", t_lab, "MeV"], 
+                                        posteriorgrid = MyPosteriorBounds)
+                                
+                                # plots figures
+                                if plot_coeffs_bool:
+                                    MyPlot.PlotCoefficients(whether_save = save_coeffs_bool)
+                                if plot_md_bool:
+                                    MyPlot.PlotMD(whether_save = save_md_bool)
+                                if plot_pc_bool:
+                                    MyPlot.PlotPC(whether_save = save_pc_bool)
+                                if plot_ci_bool:
+                                    MyPlot.PlotCredibleIntervals(whether_save = save_ci_bool)
+                                if plot_pdf_bool:
+                                    MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
+                                # if plot_trunc_bool:
+                                #     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
+                                #                                 whether_save = save_trunc_bool)
+                                if plot_plotzilla_bool:
+                                    MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
+    except:
+        print("Error encountered in running loop.")
     
     # prints all instances of the classes relevant for the arguments of 
     # GPAnalysis()
