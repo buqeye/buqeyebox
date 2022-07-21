@@ -168,6 +168,30 @@ def Q_approx(p, Q_parametrization, Lambda_b, interaction='np', single_expansion=
         # Transition from m_pi to p with a simple sum
         q = (p + m_pi) / Lambda_b
         return q
+    
+def p_approx(p_name, prel, degrees):
+    """
+    Returns the dimensionless expansion parameter Q.
+    
+    Parameters
+    ----------
+    p_name (str): name for the parametrization of the momentum
+    prel (float): relative momentum for the interaction (in MeV)
+    degrees (float array): degrees
+    """
+    
+    if p_name == "Qofprel":
+        try:
+            return np.array(prel * np.ones(len(degrees)))
+        except:
+            return np.array(prel)
+    
+    elif p_name == "Qofqcm":
+        return np.array(deg_to_qcm(prel, degrees))
+    
+    elif p_name == "Qofpq":
+        return np.array( [softmax_mom(prel, q) 
+            for q in deg_to_qcm(prel, degrees)] )
 
 def deg_to_qcm(p, deg):
     """
@@ -435,7 +459,8 @@ class InputSpaceBunch:
     def __init__(self, name, input_space, mom, caption, title_pieces):
         self.name = name
         self.input_space = input_space
-        self.mom = mom * np.ones(len(input_space))
+        # self.mom = mom * np.ones(len(input_space))
+        self.mom = mom
         self.caption = caption
         self.title_pieces = title_pieces
         
@@ -458,8 +483,10 @@ class ObservableBunch:
     ref_type (string) : tells whether the reference scale (to be divided out of the coefficient
     values) has dimension (e.g., the case of the cross section) or not (e.g., the case of the 
     spin observables). Can only be "dimensionless" or "dimensionful".
+    constraint (array or None): constraint on the values of the observable
+        For dimensionful (i.e., cross-section) observables, should be None.
     """
-    def __init__(self, name, data, energies, angles, title, ref_type):
+    def __init__(self, name, data, energies, angles, title, ref_type, constraint = None):
         self.name = name
         self.data = data
         self.energies = energies
@@ -664,14 +691,6 @@ class GSUMDiagnostics:
         # cutoff scale
         self.Lambda_b = Lambda_b
 
-        # information on the input space
-        self.inputspace = inputspace
-        self.vs_what = self.inputspace.name
-        self.x = self.inputspace.input_space
-        self.X = self.x[:, None]
-        self.caption_coeffs = self.inputspace.caption
-        self.title_coeffs = self.inputspace.title
-
         # energy or angle at which the observable is evaluated, along with all 
         # possible energies or angles for evaluation
         self.fixed_quantity_name = fixed_quantity[0]
@@ -683,6 +702,14 @@ class GSUMDiagnostics:
         self.x_quantity_name = x_quantity[0]
         self.x_quantity_array = x_quantity[1]
         self.x_quantity_units = x_quantity[2]
+        
+        # information on the input space
+        self.inputspace = inputspace
+        self.vs_what = self.inputspace.name
+        self.x = self.inputspace.input_space(self.x_quantity_array)
+        self.X = self.x[:, None]
+        self.caption_coeffs = self.inputspace.caption
+        self.title_coeffs = self.inputspace.title
 
         # information on the train/test split
         self.traintestsplit = traintestsplit
@@ -922,7 +949,7 @@ class GSUMDiagnostics:
                     '_' + 'interp_and_underlying_processes' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
                     '_' + self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                    self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
 
     def PlotMD(self, ax = None, whether_save = True):
         """
@@ -962,7 +989,7 @@ class GSUMDiagnostics:
                         '_' + 'md' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
             
         except:
             print("Error in calculating or plotting the Mahalanobis distance.")
@@ -1007,7 +1034,7 @@ class GSUMDiagnostics:
                             '_' + 'pc_vs_index' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                            self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+                            self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
     
         except:
             print("Error in calculating or plotting the pivoted Cholesky decomposition.")
@@ -1118,7 +1145,7 @@ class GSUMDiagnostics:
         except:
             print("Error in plotting the posterior PDF.")
 
-    def PlotTruncationErrors(self, online_data, constraint = [[[]], []], whether_save = True):
+    def PlotTruncationErrors(self, online_data, constraint = None, whether_save = True):
         self.online_data = online_data
         
         def lambda_interp_f_ref(x_):
@@ -1128,131 +1155,152 @@ class GSUMDiagnostics:
             X = np.ravel(x_)
             return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
         
-        # try:
-        # without the constraint
-        self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
-                    ratio = lambda_interp_f_ratio, 
-                    center = self.center, disp = self.disp, df = self.df, 
-                    scale = self.std_est, excluded = [0], 
-                    ratio_kws = {"lambda_var" : self.Lambda_b})
-        # if not constrained:
-        #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
-        # else:
-        #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
-        #                       dX = np.array([[0]]), dy=[0])
-        self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
-                              dX = np.array(constraint[0]), dy=constraint[1])
-
-        fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(6, 7))
-        fig.delaxes(axes[2,1])
-        if self.scheme == "EKM" or self.scheme == "EMN":
-            fig.delaxes(axes[2,0])
-        if self.scheme == "GT":
-            fig.delaxes(axes[1, 0])
-            fig.delaxes(axes[1, 1])
-            fig.delaxes(axes[2, 0])
-
-        for i, n in enumerate(self.nn_orders[1:]):
-            _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
-                                    return_std = True, kind = 'trunc')
-
-            for j in range(i, max(self.nn_orders)):
-                ax = axes.ravel()[j]
-                ax.plot(self.x, self.data[:, i+1], zorder=i-5, c = self.colors[i])
-                ax.fill_between(self.x, self.data[:, i+1] + 2*self.std_trunc, 
-                                self.data[:, i+1] - 2*self.std_trunc, zorder=i-5, 
-                                facecolor = self.light_colors[i], edgecolor = self.colors[i], 
-                                lw=edgewidth)
-            ax = axes.ravel()[i]
-            if self.fixed_quantity_name == "energy":
-                ax.plot(self.x, self.online_data[self.fixed_quantity_value, :], color=softblack, 
-                    lw=1, ls='--')
-            elif self.fixed_quantity_name == "angle":
-                ax.plot(self.x, self.online_data[:, self.fixed_quantity_value], color=softblack, 
-                    lw=1, ls='--')
-            ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
-                           min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
-            ax.set_yticks([-0.5, 0])
-            ax.set_yticks([-0.25,], minor=True)
-
-        # Format
-        axes[1, 0].set_xlabel(self.caption_coeffs)
-        axes[1, 1].set_xlabel(self.caption_coeffs)
-        # fig.tight_layout(h_pad=0.3, w_pad=0.3);
-        if 'fig' in locals() and whether_save:
-            fig.tight_layout()
-            
+        try:
+            # without the constraint
+            self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+                        ratio = lambda_interp_f_ratio, 
+                        center = self.center, disp = self.disp, df = self.df, 
+                        scale = self.std_est, excluded = [0], 
+                        ratio_kws = {"lambda_var" : self.Lambda_b})
             # if not constrained:
-            #     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-            #         str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
-            #         '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + 
-            #             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
-            #         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
-            #         self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
             # else:
-            #     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-            #         str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
-            #         '_' + 'full_pred_truncation_constrained' + '_' + self.scheme + '_' + 
-            #             self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
-            #         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
-            #         self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
-        # except:
-        #     print("Error plotting the truncation errors.")
-        
-        # # with the constraint
-        # self.gp_A = gm.TruncationGP(self.kernel_dsg, ref = 1, ratio = self.ratio, \
-        #             center = self.center, disp = self.disp, df = self.df, \
-        #             scale = 1, excluded = [0])
-        
-        # self.gp_A.fit(self.degrees[self.deg_train_mask_dsg][:, None], self.dsg_train, \
-        #               orders = self.nn_orders, dX = np.array([[0]]), dy=[0])
-
-        # fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(2.45, 2.5))
-        # fig.delaxes(axes[2,1])
-        # if self.scheme == "EKM" or self.scheme == "EMN":
-        #     fig.delaxes(axes[2,0])
-        # if self.scheme == "Gezerlis":
-        #     fig.delaxes(axes[1, 0])
-        #     fig.delaxes(axes[1, 1])
-        #     fig.delaxes(axes[2, 0])
-
-        # for i, n in enumerate(self.nn_orders[1:]):
-        #     _, self.std_trunc = self.gp_A.predict(self.degrees[:, None], order = n, \
-        #                             return_std=True, kind='trunc')
-
-        #     for j in range(i, 5):
-        #         ax = axes.ravel()[j]
-        #         ax.plot(self.degrees, self.dsg_vs_theta[:, i+1], zorder=i-5, \
-        #                 c=self.colors[i])
-        #         ax.fill_between(self.degrees, self.dsg_vs_theta[:, i+1] + 2*self.std_trunc, \
-        #                         self.dsg_vs_theta[:, i+1] - 2*self.std_trunc, zorder=i-5, \
-        #                         facecolor = self.light_colors[i], \
-        #                         edgecolor = self.colors[i], lw=edgewidth)
-        #     ax = axes.ravel()[i]
-        #     ax.plot(self.degrees, self.online_data[self.t_lab_idx_dsg], color=softblack, \
-        #             lw=1, ls='--')
-        #     if self.vs_what == "deg":
-        #         ax.set_xticks([60, 120])
-        #     elif self.vs_what == "qcm" or self.vs_what == "qcm2":
-        #         ax.set_xticks((np.linspace(max(self.degrees) / 3, max(self.degrees) - 1, 3)).astype(int))
-        #     ax.set_yticks([-0.5, 0])
-        #     ax.set_yticks([-0.25,], minor=True)
-
-        # # Format
-        # axes[1, 0].set_xlabel(self.caption_coeffs)
-        # axes[1, 1].set_xlabel(self.caption_coeffs)
-        # # fig.tight_layout(h_pad=0.3, w_pad=0.3)
-        
-        # if 'fig' in locals() and whether_save:
-        #     fig.tight_layout()
+            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
+            #                       dX = np.array([[0]]), dy=[0])
+            
+            if constraint is None:
+                self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
+            else:
+                self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
+                                  dX = np.array(constraint[0]), dy=constraint[1])
     
-        #     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-        #             str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
-        #             '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + \
-        #                 self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-        #             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-        #             self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+            fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(6, 7))
+            fig.delaxes(axes[2,1])
+            if self.scheme == "EKM" or self.scheme == "EMN":
+                fig.delaxes(axes[2,0])
+            if self.scheme == "GT":
+                fig.delaxes(axes[1, 0])
+                fig.delaxes(axes[1, 1])
+                fig.delaxes(axes[2, 0])
+    
+            for i, n in enumerate(self.nn_orders[1:]):
+                _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
+                                        return_std = True, kind = 'trunc')
+    
+                for j in range(i, max(self.nn_orders)):
+                    ax = axes.ravel()[j]
+                    ax.plot(self.x, self.data[:, i+1], zorder=i-5, c = self.colors[i])
+                    # ax.fill_between(self.x, self.data[:, i+1] + 2*self.std_trunc, 
+                    #                 self.data[:, i+1] - 2*self.std_trunc, zorder=i-5, 
+                    #                 facecolor = self.light_colors[i], edgecolor = self.colors[i], 
+                    #                 lw=edgewidth)
+                    percent_coverage = 0.25
+                    ax.fill_between(self.x, self.data[:, i+1] + percent_coverage*self.std_trunc, 
+                                    self.data[:, i+1] - percent_coverage*self.std_trunc, zorder=i-5, 
+                                    facecolor = self.light_colors[i], edgecolor = self.colors[i], 
+                                    lw=edgewidth)
+                ax = axes.ravel()[i]
+                if self.fixed_quantity_name == "energy":
+                    data_true = self.online_data[self.fixed_quantity_value, :]
+                    ax.plot(self.x, data_true, color=softblack, 
+                        lw=1, ls='--')
+                elif self.fixed_quantity_name == "angle":
+                    if self.fixed_quantity_value == 0:
+                        data_true = self.online_data
+                        ax.plot(self.x, data_true, color=softblack, 
+                            lw=1, ls='--')
+                    else:
+                        data_true = self.online_data[:, self.fixed_quantity_value]
+                        ax.plot(self.x, data_true, color=softblack, 
+                            lw=1, ls='--')
+                ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
+                               min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
+                if self.ref_type == "dimensionless":
+                    ax.set_yticks([-1.0, -0.5, 0, 0.5, 1.0])
+                else:
+                    ax.set_yticks(np.linspace(min(data_true), max(data_true), 
+                                              num = 5, dtype = 'int'))
+            ax.set_ylim(min(data_true) - (max(data_true) - min(data_true)) / 2, 
+                        max(data_true) + (max(data_true) - min(data_true)) / 2)
+    
+            # Format
+            axes[1, 0].set_xlabel(self.caption_coeffs)
+            axes[1, 1].set_xlabel(self.caption_coeffs)
+            
+            # fig.tight_layout(h_pad=0.3, w_pad=0.3);
+            if 'fig' in locals() and whether_save:
+                fig.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
+                                '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
+                                '}},\,\mathrm{' + self.vs_what + '})$', size = 20)
+                fig.tight_layout()
+                
+                if constraint is None:
+                    fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
+                        '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + 
+                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                else:
+                    fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
+                        '_' + 'full_pred_truncation_constrained' + '_' + self.scheme + '_' + 
+                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+            # now we plot the empirical coverage for the truncation error 
+            # and the true data from PWA93
+            # self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+            #             ratio = lambda_interp_f_ratio, 
+            #             center = self.center, disp = self.disp, df = self.df, 
+            #             scale = self.std_est, excluded = [0], 
+            #             ratio_kws = {"lambda_var" : self.Lambda_b})
+            # if constraint is None:
+            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
+            # else:
+            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
+            #                       dX = np.array(constraint[0]), dy=constraint[1])
+            
+            # this is copied from PlotCredibleIntervals() and modified only slightly
+            data_interp = interp1d(self.x, self.data[:, 1:].T)
+            self.data_wp = np.reshape(data_interp(self.X_test), (len(self.X_test), len(self.colors)))
+            self.mean_wp = self.gp_trunc.mean(self.X_test)
+            self.cov_wp = self.gp_trunc.cov(self.X_test)
+            
+            self.gr_dgn_wp = gm.GraphicalDiagnostic(self.data_wp, 
+                                self.mean_wp, self.cov_wp, colors = self.colors, gray = gray, 
+                                black=softblack)
+            
+            fig, ax = plt.subplots(figsize=(3.4, 3.2))
 
+            self.gr_dgn_wp.credible_interval(
+                np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, 
+                title = "Empirical coverage (PWA93)\n" + 
+                        r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
+                                            '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
+                                            '}},\,\mathrm{' + self.vs_what + '})$', 
+                xlabel = r'Credible Interval ($100\alpha\%$)', 
+                ylabel = r'Empirical Coverage ($\%$)\,(N = ' + str(len(self.X_test)) + r')')
+
+            ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+            ax.set_xticklabels([0, 20, 40, 60, 80, 100])
+            ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+            ax.set_yticklabels([0, 20, 40, 60, 80, 100])
+            
+            if 'fig' in locals() and whether_save:
+                fig.tight_layout()
+        
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
+                        '_' + 'truncation_error_empirical_coverage' + '_' + self.scheme + '_' + \
+                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+        except:
+            print("Error plotting the truncation errors.")
+            
     def PlotCredibleIntervals(self, ax = None, whether_save = True):
         """
         Parameters
@@ -1266,40 +1314,41 @@ class GSUMDiagnostics:
         -------
         Figure with plot.
         """
-        try:
-            # calculates and plots credible intervals ("weather plots")
-            self.gp.kernel_
-            self.mean = self.gp.mean(self.X_test)
-            self.cov = self.gp.cov(self.X_test)
-            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
-                                self.mean, self.cov, colors = self.colors, gray = gray, \
-                                black=softblack)
-            
-            if ax is None:
-                fig, ax = plt.subplots(figsize=(3.4, 3.2))
-    
-            self.gr_dgn.credible_interval(
-                np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, title = None, \
-                xlabel = r'Credible Interval ($100\alpha\%$)', \
-                ylabel = r'Empirical Coverage ($\%$)')
-    
-            ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
-            ax.set_xticklabels([0, 20, 40, 60, 80, 100])
-            ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
-            ax.set_yticklabels([0, 20, 40, 60, 80, 100])
-            
-            if 'fig' in locals() and whether_save:
-                fig.tight_layout()
+        # try:
+        # calculates and plots credible intervals ("weather plots")
+        self.gp.kernel_
+        self.mean = self.gp.mean(self.X_test)
+        self.cov = self.gp.cov(self.X_test)
         
-                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
-                        '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
-                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc + '_' + self.filename_addendum).replace('_0MeVlab_', '_'))
+        self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
+                            self.mean, self.cov, colors = self.colors, gray = gray, \
+                            black=softblack)
         
-        except:
-            print("Error in plotting the credible intervals.")
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(3.4, 3.2))
+
+        self.gr_dgn.credible_interval(
+            np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, title = None, \
+            xlabel = r'Credible Interval ($100\alpha\%$)', \
+            ylabel = r'Empirical Coverage ($\%$)\,(N = ' + str(len(self.X_test)) + r')')
+
+        ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+        ax.set_xticklabels([0, 20, 40, 60, 80, 100])
+        ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+        ax.set_yticklabels([0, 20, 40, 60, 80, 100])
+        
+        if 'fig' in locals() and whether_save:
+            fig.tight_layout()
+    
+            fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                    str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
+                    '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
+                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+                    self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+        # except:
+        #     print("Error in plotting the credible intervals.")
 
     def Plotzilla(self, whether_save = True):
         """
