@@ -393,87 +393,6 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                 # runs through the energies at which to evaluate the observables
                 for j, E_lab in enumerate(observable.energies):
                     # creates the bunches for the vs-angle input spaces
-                    # DegBunch = InputSpaceBunch("deg", 
-                    #                     lambda x : x, 
-                    #                     E_to_p(E_lab, "np"), 
-                    #                     r'$\theta$ (deg)', 
-                    #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
-                    #                       '\,\mathrm{MeV})$'])
-                    # DegBunch = InputSpaceBunch("deg", 
-                    #                     degrees, 
-                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                    #                     r'$\theta$ (deg)', 
-                    #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
-                    #                       '\,\mathrm{MeV})$'])
-                    # DegBunch = InputSpaceBunch("deg", 
-                    #                     lambda x : x, 
-                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                    #                                 for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                    #                     r'$\theta$ (deg)', 
-                    #                     [r'$', observable.title, r'(\theta, E_{\mathrm{lab}}= ', E_lab, 
-                    #                       '\,\mathrm{MeV})$'])
-                    
-                    # note that the input space here is -cos(theta), not cos(theta) (as it once was)
-                    # CosBunch = InputSpaceBunch("cos", 
-                    #                     lambda x : -np.cos(np.radians(x)), 
-                    #                     E_to_p(E_lab, "np"), 
-                    #                     r'$-\mathrm{cos}(\theta)$', 
-                    #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    # CosBunch = InputSpaceBunch("cos", 
-                    #                     -np.cos(np.radians(degrees)), 
-                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                    #                     r'$-\mathrm{cos}(\theta)$', 
-                    #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    # CosBunch = InputSpaceBunch("cos", 
-                    #                     lambda x : -np.cos(np.radians(x)), 
-                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                    #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                    #                     r'$-\mathrm{cos}(\theta)$', 
-                    #                     [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-            
-                    # QcmBunch = InputSpaceBunch("qcm", 
-                    #                     lambda x : deg_to_qcm(E_to_p(E_lab, "np"), x), 
-                    #                     E_to_p(E_lab, "np"), 
-                    #                     r'$q_{\mathrm{cm}}$ (MeV)', 
-                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    # QcmBunch = InputSpaceBunch("qcm", 
-                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                    #                     r'$q_{\mathrm{cm}}$ (MeV)', \
-                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    # QcmBunch = InputSpaceBunch("qcm", 
-                    #                     lambda x : deg_to_qcm(E_to_p(E_lab, "np"), x), 
-                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                    #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                    #                     r'$q_{\mathrm{cm}}$ (MeV)', 
-                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}, E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-            
-                    # Qcm2Bunch = InputSpaceBunch("qcm2", 
-                    #                     lambda x : deg_to_qcm2(E_to_p(E_lab, "np"), x), 
-                    #                     E_to_p(E_lab, "np"), 
-                    #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
-                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    # Qcm2Bunch = InputSpaceBunch("qcm2", 
-                    #                     deg_to_qcm2(E_to_p(E_lab, "np"), degrees), 
-                    #                     deg_to_qcm(E_to_p(E_lab, "np"), degrees), 
-                    #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
-                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    # Qcm2Bunch = InputSpaceBunch("qcm2", 
-                    #                     lambda x : deg_to_qcm2(E_to_p(E_lab, "np"), x), 
-                    #                     np.array( [softmax_mom(E_to_p(E_lab, "np"), q) 
-                    #                               for q in deg_to_qcm(E_to_p(E_lab, "np"), degrees)] ), 
-                    #                     r'$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)', 
-                    #                     [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
-                    #                       E_lab, '\,\mathrm{MeV})$'])
-                    
                     DegBunch = InputSpaceBunch("deg", 
                                         lambda x : x, 
                                         p_approx(p_param_method, E_to_p(E_lab, "np"), degrees), 
@@ -536,25 +455,27 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 df = 1
                                 disp = 0
                                 std_scale = 1
-                                GPHyper_DSG = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, \
-                                                df = df, disp = disp, scale = std_scale, seed = 4, 
+                                GPHyper = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
+                                                df = df, disp = disp, scale = std_scale, seed = None, 
                                                 sd = fixed_sd)
             
                                 # information for naming the savefiles
-                                FileName_DSG = FileNaming(scalescheme.potential_string, \
+                                FileName = FileNaming(scalescheme.potential_string, 
                                                 scalescheme.cutoff_string, Q_param_method, 
+                                                p_param_method, 
                                                 filename_addendum = filename_addendum)
             
                                 # information on the orders for each potential
-                                Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, \
+                                Orders = OrderInfo(scalescheme.orders_full, mask_full, \
                                                 scalescheme.colors, scalescheme.light_colors, \
                                                 orders_restricted = orders_input_array, \
                                                 mask_restricted = mask_orders)
                                 
                                 # creates the object used to generate and plot statistical diagnostics
                                 MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
-                                        traintestsplit, GPHyper_DSG, Orders_DSG, 
-                                        FileName_DSG, fixed_quantity = ["energy", E_lab, t_lab, "MeV"], 
+                                        traintestsplit, GPHyper, Orders, 
+                                        FileName, 
+                                        fixed_quantity = ["energy", E_lab, t_lab, "MeV"], 
                                         x_quantity = ["angle", degrees, "degrees"], 
                                         posteriorgrid = MyPosteriorBounds)
                                 
@@ -630,17 +551,18 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 df = 1
                                 disp = 0
                                 std_scale = 1
-                                GPHyper_DSG = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
-                                                df = df, disp = disp, scale = std_scale, seed = 4, 
+                                GPHyper = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
+                                                df = df, disp = disp, scale = std_scale, seed = None, 
                                                 sd = fixed_sd)
             
                                 # information for naming the savefiles
-                                FileName_DSG = FileNaming(scalescheme.potential_string, 
+                                FileName = FileNaming(scalescheme.potential_string, 
                                                 scalescheme.cutoff_string, Q_param_method, 
+                                                p_param_method, 
                                                 filename_addendum = filename_addendum)
             
                                 # information on the orders for each potential
-                                Orders_DSG = OrderInfo(scalescheme.orders_full, mask_full, 
+                                Orders = OrderInfo(scalescheme.orders_full, mask_full, 
                                                 scalescheme.colors, scalescheme.light_colors, 
                                                 orders_restricted = orders_input_array, 
                                                 mask_restricted = mask_orders)
@@ -648,8 +570,9 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 
                                 # creates the object used to generate and plot statistical diagnostics
                                 MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
-                                        traintestsplit, GPHyper_DSG, Orders_DSG, 
-                                        FileName_DSG, fixed_quantity = ["angle", angle_lab, degrees, "degrees"], 
+                                        traintestsplit, GPHyper, Orders, 
+                                        FileName, 
+                                        fixed_quantity = ["angle", angle_lab, degrees, "degrees"], 
                                         x_quantity = ["energy", t_lab, "MeV"], 
                                         posteriorgrid = MyPosteriorBounds)
                                 

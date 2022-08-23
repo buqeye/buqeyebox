@@ -254,16 +254,18 @@ class GPHyperparameters:
         self.sd = sd
         
 class FileNaming:
-    def __init__(self, scheme, scale, Q_param, filename_addendum = ""):
+    def __init__(self, scheme, scale, Q_param, p_param, filename_addendum = ""):
         """
         scheme (str) : name of the scheme
         scale (str) : name of the scale
         Q_param (str) : name of the Q parametrization
-        Q_param (str) : optional extra string
+        p_param (str) : name of the p parametrization
+        filename_addendum (str) : optional extra string
         """
         self.scheme = scheme
         self.scale = scale
         self.Q_param = Q_param
+        self.p_param = p_param
         self.filename_addendum = filename_addendum
 
 def find_nearest_val(array, value):
@@ -751,6 +753,7 @@ class GSUMDiagnostics:
         self.scheme = self.filenaming.scheme
         self.scale = self.filenaming.scale
         self.Q_param = self.filenaming.Q_param
+        self.p_param = self.filenaming.p_param
         self.filename_addendum = self.filenaming.filename_addendum
         
         # posterior pdf bounds
@@ -809,7 +812,7 @@ class GSUMDiagnostics:
                     self.data = self.data.T
                 else:
                     self.ref = self.data[:, -1]
-                    
+                
                 self.interp_f_ref = interp1d(self.x, self.ref)
                 self.ref_train = self.interp_f_ref(self.x_train)
                 self.ref_test = self.interp_f_ref(self.x_test)
@@ -949,7 +952,8 @@ class GSUMDiagnostics:
                     '_' + 'interp_and_underlying_processes' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
                     '_' + self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                     '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                    self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    self.train_pts_loc + '_' + self.p_param + 
+                    self.filename_addendum).replace('_0MeVlab_', '_'))
 
     def PlotMD(self, ax = None, whether_save = True):
         """
@@ -969,10 +973,9 @@ class GSUMDiagnostics:
             self.gp.kernel_
             self.mean = self.gp.mean(self.X_test)
             self.cov = self.gp.cov(self.X_test)
-            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
-                                                     self.mean, self.cov, \
-                                                     colors = self.colors, gray=gray, \
-                                                     black=softblack)
+            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, 
+                        self.mean, self.cov, colors = self.colors, gray=gray, 
+                        black=softblack)
     
             if ax is None:
                 fig, ax = plt.subplots(figsize=(1, 3.2))
@@ -989,7 +992,8 @@ class GSUMDiagnostics:
                         '_' + 'md' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + '_' + self.p_param + 
+                        self.filename_addendum).replace('_0MeVlab_', '_'))
             
         except:
             print("Error in calculating or plotting the Mahalanobis distance.")
@@ -1034,7 +1038,8 @@ class GSUMDiagnostics:
                             '_' + 'pc_vs_index' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                             self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                            self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                            self.train_pts_loc + '_' + self.p_param + 
+                            self.filename_addendum).replace('_0MeVlab_', '_'))
     
         except:
             print("Error in calculating or plotting the pivoted Cholesky decomposition.")
@@ -1140,12 +1145,29 @@ class GSUMDiagnostics:
                                 '_' + 'Lambda_ell_jointplot' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                                 self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                                 '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                                self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                                self.train_pts_loc + '_' + self.p_param + 
+                                self.filename_addendum).replace('_0MeVlab_', '_'))
         
         except:
             print("Error in plotting the posterior PDF.")
 
     def PlotTruncationErrors(self, online_data, constraint = None, whether_save = True):
+        """
+        Parameters
+        ----------
+        online_data : array
+            Summed order-by-order predictions for an observable.
+        constraint : array of arrays, optional
+            The constraints for the fit procedure. The default is None.
+        whether_save : bool, optional
+            Whether to save the output. The default is True.
+
+        Returns
+        -------
+        Figure (2)
+            A figure with the order-by-order residuals plot and a figure with 
+            the order-by-order empirical coverage.
+        """
         self.online_data = online_data
         
         def lambda_interp_f_ref(x_):
@@ -1155,151 +1177,198 @@ class GSUMDiagnostics:
             X = np.ravel(x_)
             return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
         
-        try:
-            # without the constraint
-            self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
-                        ratio = lambda_interp_f_ratio, 
-                        center = self.center, disp = self.disp, df = self.df, 
-                        scale = self.std_est, excluded = [0], 
-                        ratio_kws = {"lambda_var" : self.Lambda_b})
-            # if not constrained:
-            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
-            # else:
-            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
-            #                       dX = np.array([[0]]), dy=[0])
+        # try:
+        # without the constraint
+        self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+                    ratio = lambda_interp_f_ratio, 
+                    center = self.center, disp = self.disp, df = self.df, 
+                    scale = self.std_est, excluded = [0], 
+                    ratio_kws = {"lambda_var" : self.Lambda_b})
+        
+        # fits the GP with or without a constraint
+        if constraint is None:
+            self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
+        else:
+            self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
+                              dX = np.array(constraint[0]), dy=constraint[1])
+
+        fig, axes = plt.subplots(3, 2, sharex=True, sharey=False, figsize=(6, 7))
+        
+        # eliminates useless subplots from the truncation error figure
+        if self.scheme == "RKE":
+            fig.delaxes(axes[2, 1])
+        elif self.scheme == "EKM":
+            fig.delaxes(axes[2, 0])
+            fig.delaxes(axes[2, 1])
+        elif self.scheme == "EMN":
+            fig.delaxes(axes[2, 0])
+            fig.delaxes(axes[2, 1])
+        elif self.scheme == "GT":
+            fig.delaxes(axes[1, 0])
+            fig.delaxes(axes[1, 1])
+            fig.delaxes(axes[2, 0])
+            fig.delaxes(axes[2, 1])
             
-            if constraint is None:
-                self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
-            else:
-                self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
-                                  dX = np.array(constraint[0]), dy=constraint[1])
-    
-            fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(6, 7))
-            fig.delaxes(axes[2,1])
-            if self.scheme == "EKM" or self.scheme == "EMN":
-                fig.delaxes(axes[2,0])
-            if self.scheme == "GT":
-                fig.delaxes(axes[1, 0])
-                fig.delaxes(axes[1, 1])
-                fig.delaxes(axes[2, 0])
-    
+        if True:
+            # plots the order-by-order residuals
             for i, n in enumerate(self.nn_orders[1:]):
                 _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
                                         return_std = True, kind = 'trunc')
-    
-                for j in range(i, max(self.nn_orders)):
-                    ax = axes.ravel()[j]
-                    ax.plot(self.x, self.data[:, i+1], zorder=i-5, c = self.colors[i])
-                    # ax.fill_between(self.x, self.data[:, i+1] + 2*self.std_trunc, 
-                    #                 self.data[:, i+1] - 2*self.std_trunc, zorder=i-5, 
-                    #                 facecolor = self.light_colors[i], edgecolor = self.colors[i], 
-                    #                 lw=edgewidth)
-                    percent_coverage = 0.25
-                    ax.fill_between(self.x, self.data[:, i+1] + percent_coverage*self.std_trunc, 
-                                    self.data[:, i+1] - percent_coverage*self.std_trunc, zorder=i-5, 
-                                    facecolor = self.light_colors[i], edgecolor = self.colors[i], 
-                                    lw=edgewidth)
-                ax = axes.ravel()[i]
+                
+                # gets the "true" order-by-order data from online
                 if self.fixed_quantity_name == "energy":
                     data_true = self.online_data[self.fixed_quantity_value, :]
-                    ax.plot(self.x, data_true, color=softblack, 
-                        lw=1, ls='--')
                 elif self.fixed_quantity_name == "angle":
                     if self.fixed_quantity_value == 0:
                         data_true = self.online_data
-                        ax.plot(self.x, data_true, color=softblack, 
-                            lw=1, ls='--')
                     else:
                         data_true = self.online_data[:, self.fixed_quantity_value]
-                        ax.plot(self.x, data_true, color=softblack, 
-                            lw=1, ls='--')
+                        
+                for j in range(i, max(self.nn_orders)):
+                    ax = axes.ravel()[j]
+                    
+                    # calculates the residuals
+                    residual = data_true - self.data[:, i]
+                    
+                    ax.plot(self.x, residual, zorder=i-5, c = self.colors[i])
+                    # number of standard deviations around the residual to plot
+                    percent_coverage = 1
+                    ax.fill_between(self.x, residual + percent_coverage*self.std_trunc, 
+                                    residual - percent_coverage*self.std_trunc, zorder=i-5, 
+                                    facecolor = self.light_colors[i], edgecolor = self.colors[i], 
+                                    lw=edgewidth)
+                    ax.set_ylim(np.min(np.concatenate((residual + percent_coverage*self.std_trunc, residual - percent_coverage*self.std_trunc))), 
+                                np.max(np.concatenate((residual + percent_coverage*self.std_trunc, residual - percent_coverage*self.std_trunc))))
+                
+                ax = axes.ravel()[i]
+                
+                ax.plot(self.x, np.zeros(len(self.x)), color=softblack, lw=1, ls='--')
+                
                 ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
                                min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
-                if self.ref_type == "dimensionless":
-                    ax.set_yticks([-1.0, -0.5, 0, 0.5, 1.0])
-                else:
-                    ax.set_yticks(np.linspace(min(data_true), max(data_true), 
-                                              num = 5, dtype = 'int'))
-            ax.set_ylim(min(data_true) - (max(data_true) - min(data_true)) / 2, 
-                        max(data_true) + (max(data_true) - min(data_true)) / 2)
     
             # Format
             axes[1, 0].set_xlabel(self.caption_coeffs)
             axes[1, 1].set_xlabel(self.caption_coeffs)
             
-            # fig.tight_layout(h_pad=0.3, w_pad=0.3);
-            if 'fig' in locals() and whether_save:
-                fig.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
-                                '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
-                                '}},\,\mathrm{' + self.vs_what + '})$', size = 20)
-                fig.tight_layout()
-                
-                if constraint is None:
-                    fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
-                        '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + 
-                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
-                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
-                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
-                else:
-                    fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
-                        '_' + 'full_pred_truncation_constrained' + '_' + self.scheme + '_' + 
-                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
-                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
-                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
-        
-            # now we plot the empirical coverage for the truncation error 
-            # and the true data from PWA93
-            # self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
-            #             ratio = lambda_interp_f_ratio, 
-            #             center = self.center, disp = self.disp, df = self.df, 
-            #             scale = self.std_est, excluded = [0], 
-            #             ratio_kws = {"lambda_var" : self.Lambda_b})
-            # if constraint is None:
-            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
-            # else:
-            #     self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
-            #                       dX = np.array(constraint[0]), dy=constraint[1])
+        # else:
+        #     for i, n in enumerate(self.nn_orders[1:]):
+        #         _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
+        #                                 return_std = True, kind = 'trunc')
+    
+        #         for j in range(i, max(self.nn_orders)):
+        #             ax = axes.ravel()[j]
+        #             ax.plot(self.x, self.data[:, i+1], zorder=i-5, c = self.colors[i])
+        #             # ax.fill_between(self.x, self.data[:, i+1] + 2*self.std_trunc, 
+        #             #                 self.data[:, i+1] - 2*self.std_trunc, zorder=i-5, 
+        #             #                 facecolor = self.light_colors[i], edgecolor = self.colors[i], 
+        #             #                 lw=edgewidth)
+        #             percent_coverage = 2
+        #             ax.fill_between(self.x, self.data[:, i+1] + percent_coverage*self.std_trunc, 
+        #                             self.data[:, i+1] - percent_coverage*self.std_trunc, zorder=i-5, 
+        #                             facecolor = self.light_colors[i], edgecolor = self.colors[i], 
+        #                             lw=edgewidth)
+        #         ax = axes.ravel()[i]
+        #         if self.fixed_quantity_name == "energy":
+        #             data_true = self.online_data[self.fixed_quantity_value, :]
+        #             ax.plot(self.x, data_true, color=softblack, 
+        #                 lw=1, ls='--')
+        #         elif self.fixed_quantity_name == "angle":
+        #             if self.fixed_quantity_value == 0:
+        #                 data_true = self.online_data
+        #                 ax.plot(self.x, data_true, color=softblack, 
+        #                     lw=1, ls='--')
+        #             else:
+        #                 data_true = self.online_data[:, self.fixed_quantity_value]
+        #                 ax.plot(self.x, data_true, color=softblack, 
+        #                     lw=1, ls='--')
+        #         ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
+        #                        min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
+        #         if self.ref_type == "dimensionless":
+        #             ax.set_yticks([-1.0, -0.5, 0, 0.5, 1.0])
+        #         else:
+        #             ax.set_yticks(np.linspace(min(data_true), max(data_true), 
+        #                                       num = 5, dtype = 'int'))
+        #     ax.set_ylim(min(data_true) - (max(data_true) - min(data_true)) / 2, 
+        #                 max(data_true) + (max(data_true) - min(data_true)) / 2)
+    
+        #     # Format
+        #     axes[1, 0].set_xlabel(self.caption_coeffs)
+        #     axes[1, 1].set_xlabel(self.caption_coeffs)
             
-            # this is copied from PlotCredibleIntervals() and modified only slightly
-            data_interp = interp1d(self.x, self.data[:, 1:].T)
-            self.data_wp = np.reshape(data_interp(self.X_test), (len(self.X_test), len(self.colors)))
-            self.mean_wp = self.gp_trunc.mean(self.X_test)
-            self.cov_wp = self.gp_trunc.cov(self.X_test)
+        # fig.tight_layout(h_pad=0.3, w_pad=0.3);
+        if 'fig' in locals() and whether_save:
+            fig.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
+                            '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
+                            '}},\,\mathrm{' + self.p_param + '},\,\mathrm{' + self.vs_what + '})$', size = 20)
+            fig.tight_layout()
             
-            self.gr_dgn_wp = gm.GraphicalDiagnostic(self.data_wp, 
-                                self.mean_wp, self.cov_wp, colors = self.colors, gray = gray, 
-                                black=softblack)
-            
-            fig, ax = plt.subplots(figsize=(3.4, 3.2))
-
-            self.gr_dgn_wp.credible_interval(
-                np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, 
-                title = "Empirical coverage (PWA93)\n" + 
-                        r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
-                                            '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
-                                            '}},\,\mathrm{' + self.vs_what + '})$', 
-                xlabel = r'Credible Interval ($100\alpha\%$)', 
-                ylabel = r'Empirical Coverage ($\%$)\,(N = ' + str(len(self.X_test)) + r')')
-
-            ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
-            ax.set_xticklabels([0, 20, 40, 60, 80, 100])
-            ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
-            ax.set_yticklabels([0, 20, 40, 60, 80, 100])
-            
-            if 'fig' in locals() and whether_save:
-                fig.tight_layout()
-        
+            if constraint is None:
                 fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
-                        '_' + 'truncation_error_empirical_coverage' + '_' + self.scheme + '_' + \
-                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
+                    '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + 
+                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                    self.train_pts_loc + '_' + self.p_param + 
+                    self.filename_addendum).replace('_0MeVlab_', '_'))
+            else:
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                    str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
+                    '_' + 'full_pred_truncation_constrained' + '_' + self.scheme + '_' + 
+                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                    self.train_pts_loc + '_' + self.p_param + 
+                    self.filename_addendum).replace('_0MeVlab_', '_'))
         
-        except:
-            print("Error plotting the truncation errors.")
+        # this is copied from PlotCredibleIntervals() and modified only slightly
+        data_interp = interp1d(self.x, self.data[:, 1:].T)
+        data_true_interp = interp1d(self.x, data_true)
+        self.data_wp = np.reshape(data_interp(self.X_test), (len(self.X_test), len(self.colors)))
+        self.mean_wp = self.gp_trunc.mean(self.X_test)
+        self.cov_wp = self.gp_trunc.cov(self.X_test)
+        
+        # norms the residuals by factors of the ratio
+        self.norm_residuals_wp = data_true_interp(self.X_test) - data_interp(self.X_test)
+        print(self.norm_residuals_wp)
+        denom = (np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1)).T)**(self.nn_orders[1:] + 1) / (np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1))**2)).T
+        print((np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1)).T)**(self.nn_orders[1:] + 1))
+        print((np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1))**2)).T)
+        print((denom.T)[:, :, None])
+        self.norm_residuals_wp = self.norm_residuals_wp / (denom.T)[:, :, None]
+        self.gr_dgn_wp = gm.GraphicalDiagnostic(self.norm_residuals_wp.T, 
+                            mean=self.mean_wp, cov=self.cov_wp, 
+                            colors=self.colors, gray=gray, black=softblack)
+        
+        fig, ax = plt.subplots(figsize=(3.4, 3.2))
+
+        # creates the empirical coverage plot
+        self.gr_dgn_wp.credible_interval(
+            np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, 
+            title = "Empirical coverage (PWA93)\n" + 
+                    r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
+                                        '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
+                                        '}},\,\mathrm{' + self.p_param + '},\,\mathrm{' + self.vs_what + '})$', 
+            xlabel = r'Credible Interval ($100\alpha\%$)', 
+            ylabel = r'Empirical Coverage ($\%$)\,(N = ' + str(len(self.X_test)) + r')')
+
+        ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+        ax.set_xticklabels([0, 20, 40, 60, 80, 100])
+        ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+        ax.set_yticklabels([0, 20, 40, 60, 80, 100])
+        
+        if 'fig' in locals() and whether_save:
+            fig.tight_layout()
+    
+            fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                    str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
+                    '_' + 'truncation_error_empirical_coverage' + '_' + self.scheme + '_' + \
+                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+                    self.train_pts_loc + '_' + self.p_param +  
+                    self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+        # except:
+        #     print("Error plotting the truncation errors.")
             
     def PlotCredibleIntervals(self, ax = None, whether_save = True):
         """
@@ -1314,41 +1383,42 @@ class GSUMDiagnostics:
         -------
         Figure with plot.
         """
-        # try:
-        # calculates and plots credible intervals ("weather plots")
-        self.gp.kernel_
-        self.mean = self.gp.mean(self.X_test)
-        self.cov = self.gp.cov(self.X_test)
-        
-        self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
-                            self.mean, self.cov, colors = self.colors, gray = gray, \
-                            black=softblack)
-        
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(3.4, 3.2))
-
-        self.gr_dgn.credible_interval(
-            np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, title = None, \
-            xlabel = r'Credible Interval ($100\alpha\%$)', \
-            ylabel = r'Empirical Coverage ($\%$)\,(N = ' + str(len(self.X_test)) + r')')
-
-        ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
-        ax.set_xticklabels([0, 20, 40, 60, 80, 100])
-        ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
-        ax.set_yticklabels([0, 20, 40, 60, 80, 100])
-        
-        if 'fig' in locals() and whether_save:
-            fig.tight_layout()
+        try:
+            # calculates and plots credible intervals ("weather plots")
+            self.gp.kernel_
+            self.mean = self.gp.mean(self.X_test)
+            self.cov = self.gp.cov(self.X_test)
+            
+            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
+                                self.mean, self.cov, colors = self.colors, gray = gray, \
+                                black=softblack)
+            
+            if ax is None:
+                fig, ax = plt.subplots(figsize=(3.4, 3.2))
     
-            fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
-                    str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
-                    '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
-                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
-                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                    self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+            self.gr_dgn.credible_interval(
+                np.linspace(1e-5, 1, 100), band_perc=[0.68, 0.95], ax = ax, title = None, \
+                xlabel = r'Credible Interval ($100\alpha\%$)', \
+                ylabel = r'Empirical Coverage ($\%$)\,(N = ' + str(len(self.X_test)) + r')')
+    
+            ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+            ax.set_xticklabels([0, 20, 40, 60, 80, 100])
+            ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+            ax.set_yticklabels([0, 20, 40, 60, 80, 100])
+            
+            if 'fig' in locals() and whether_save:
+                fig.tight_layout()
         
-        # except:
-        #     print("Error in plotting the credible intervals.")
+                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
+                        str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + \
+                        '_' + 'truncation_error_credible_intervals' + '_' + self.scheme + '_' + \
+                            self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
+                        '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
+                        self.train_pts_loc + '_' + self.p_param + 
+                        self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+        except:
+            print("Error in plotting the credible intervals.")
 
     def Plotzilla(self, whether_save = True):
         """
@@ -1403,11 +1473,12 @@ class GSUMDiagnostics:
         # adds a title
         fig_main.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
                         '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
-                        '}},\,\mathrm{' + self.vs_what + '})$', size = 30)
+                        '}},\,\mathrm{' + self.p_param + '},\,\mathrm{' + self.vs_what + '})$', size = 30)
         
         if whether_save:
             fig_main.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + \
                         '_' + 'plotzilla' + '_' + str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + '_' + \
                         self.scheme + '_' + self.scale + '_Q' + self.Q_param + '_' + self.vs_what + \
                         '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + \
-                        self.train_pts_loc + self.filename_addendum).replace('_0MeVlab_', '_'))
+                        self.train_pts_loc + '_' + self.p_param + 
+                        self.filename_addendum).replace('_0MeVlab_', '_'))
