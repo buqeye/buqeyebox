@@ -491,8 +491,9 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 if plot_pdf_bool:
                                     MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
                                 if plot_trunc_bool:
-                                    constraint = [np.array([[vs_quantity.input_space(1)]]), [0]] \
-                                        if observable.ref_type == "dimensionless" else None
+                                    constraint = None
+                                    # constraint = [np.array([[vs_quantity.input_space(1)]]), [0]] \
+                                    #     if observable.ref_type == "dimensionless" else None
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
                                                                 whether_save = save_trunc_bool, 
                                                                 constraint = constraint)

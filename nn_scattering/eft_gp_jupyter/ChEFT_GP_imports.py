@@ -743,11 +743,14 @@ class GSUMDiagnostics:
         self.nn_orders_full = self.orderinfo.orders_full
         self.nn_orders = self.orderinfo.orders_full
         self.nn_orders_mask = self.orderinfo.mask_full
+        print(self.nn_orders_mask)
         self.colors = self.orderinfo.colors_array
         self.light_colors = self.orderinfo.lightcolors_array
         self.orders_restricted = self.orderinfo.orders_restricted
+        print(self.orders_restricted)
         self.mask_restricted = self.orderinfo.mask_restricted
-
+        print(self.mask_restricted)
+        
         # information for naming the file
         self.filenaming = filenaming
         self.scheme = self.filenaming.scheme
@@ -1179,6 +1182,12 @@ class GSUMDiagnostics:
         
         # try:
         # without the constraint
+        # print(self.kernel)
+        # print(self.center)
+        # print(self.disp)
+        # print(self.df)
+        # print(self.std_est)
+        # print(self.Lambda_b)
         self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
                     ratio = lambda_interp_f_ratio, 
                     center = self.center, disp = self.disp, df = self.df, 
@@ -1186,6 +1195,7 @@ class GSUMDiagnostics:
                     ratio_kws = {"lambda_var" : self.Lambda_b})
         
         # fits the GP with or without a constraint
+        # print(self.y_train.shape)
         if constraint is None:
             self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
         else:
@@ -1197,6 +1207,7 @@ class GSUMDiagnostics:
         # eliminates useless subplots from the truncation error figure
         if self.scheme == "RKE":
             fig.delaxes(axes[2, 1])
+            print("We deleted it.")
         elif self.scheme == "EKM":
             fig.delaxes(axes[2, 0])
             fig.delaxes(axes[2, 1])
@@ -1211,9 +1222,13 @@ class GSUMDiagnostics:
             
         if True:
             # plots the order-by-order residuals
-            for i, n in enumerate(self.nn_orders[1:]):
+            # print(self.nn_orders)
+            for i, n in enumerate(self.nn_orders[self.nn_orders_mask]):
+                # print("i = " + str(i))
+                # print("n = " + str(n))
                 _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
                                         return_std = True, kind = 'trunc')
+                # print("std_trunc = " + str(self.std_trunc))
                 
                 # gets the "true" order-by-order data from online
                 if self.fixed_quantity_name == "energy":
@@ -1224,21 +1239,27 @@ class GSUMDiagnostics:
                     else:
                         data_true = self.online_data[:, self.fixed_quantity_value]
                         
-                for j in range(i, max(self.nn_orders)):
+                for j in range(i, max(self.nn_orders[self.nn_orders_mask])):
+                    # print("j = " + str(j))
                     ax = axes.ravel()[j]
+                    # print("There are " + str(len(axes.ravel())) + " axes.")
                     
                     # calculates the residuals
-                    residual = data_true - self.data[:, i]
+                    # print("data_true has shape " + str(data_true.shape))
+                    # print("self.data has shape " + str(self.data.shape))
+                    residual = data_true - (self.data[:, self.nn_orders_mask])[:, i]
+                    # print("residual has shape " + str(residual.shape))
                     
                     ax.plot(self.x, residual, zorder=i-5, c = self.colors[i])
+                    for line in self.x_test: ax.axvline(line, 0, 1, c = gray);
                     # number of standard deviations around the residual to plot
-                    percent_coverage = 1
-                    ax.fill_between(self.x, residual + percent_coverage*self.std_trunc, 
-                                    residual - percent_coverage*self.std_trunc, zorder=i-5, 
+                    std_coverage = 0.64
+                    ax.fill_between(self.x, residual + std_coverage*self.std_trunc, 
+                                    residual - std_coverage*self.std_trunc, zorder=i-5, 
                                     facecolor = self.light_colors[i], edgecolor = self.colors[i], 
                                     lw=edgewidth)
-                    ax.set_ylim(np.min(np.concatenate((residual + percent_coverage*self.std_trunc, residual - percent_coverage*self.std_trunc))), 
-                                np.max(np.concatenate((residual + percent_coverage*self.std_trunc, residual - percent_coverage*self.std_trunc))))
+                    ax.set_ylim(np.min(np.concatenate((residual + std_coverage*self.std_trunc, residual - std_coverage*self.std_trunc))), 
+                                np.max(np.concatenate((residual + std_coverage*self.std_trunc, residual - std_coverage*self.std_trunc))))
                 
                 ax = axes.ravel()[i]
                 
@@ -1296,7 +1317,6 @@ class GSUMDiagnostics:
         #     axes[1, 0].set_xlabel(self.caption_coeffs)
         #     axes[1, 1].set_xlabel(self.caption_coeffs)
             
-        # fig.tight_layout(h_pad=0.3, w_pad=0.3);
         if 'fig' in locals() and whether_save:
             fig.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
                             '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
@@ -1320,24 +1340,47 @@ class GSUMDiagnostics:
                     self.train_pts_loc + '_' + self.p_param + 
                     self.filename_addendum).replace('_0MeVlab_', '_'))
         
+        # self.gp_trunc.kernel_
         # this is copied from PlotCredibleIntervals() and modified only slightly
-        data_interp = interp1d(self.x, self.data[:, 1:].T)
+        # print("data has shape " + str((self.data[:, 1:]).shape))
+        # print("data_true has shape " + str(data_true.shape))
+        data_interp = interp1d(self.x, self.data[:, self.nn_orders_mask].T)
+        # print((self.data[:, 1:]).shape)
         data_true_interp = interp1d(self.x, data_true)
-        self.data_wp = np.reshape(data_interp(self.X_test), (len(self.X_test), len(self.colors)))
+        # self.data_wp = np.reshape(data_interp(self.X_test), (len(self.colors), len(self.X_test)))
+        # print("data_wp has shape " + str(self.data_wp.shape))
+        self.cov_wp = self.gp_trunc.cov(self.X_test, start = 0, end = np.inf)
+        # print("cov_wp = " + str(self.cov_wp))
         self.mean_wp = self.gp_trunc.mean(self.X_test)
-        self.cov_wp = self.gp_trunc.cov(self.X_test)
+        # print("mean_wp = " + str(self.mean_wp))
+        
         
         # norms the residuals by factors of the ratio
+        # print(self.X_test)
         self.norm_residuals_wp = data_true_interp(self.X_test) - data_interp(self.X_test)
-        print(self.norm_residuals_wp)
-        denom = (np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1)).T)**(self.nn_orders[1:] + 1) / (np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1))**2)).T
-        print((np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1)).T)**(self.nn_orders[1:] + 1))
-        print((np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1))**2)).T)
-        print((denom.T)[:, :, None])
+        # self.norm_residuals_wp = data_true_interp(self.X_test) - self.data_wp[:, :, None]        
+        # print(self.norm_residuals_wp)
+        # print(data_true_interp(self.X_test).shape)
+        # print(data_interp(self.X_test).shape)
+        # print(self.data_wp[:, :, None].shape)
+        # print(self.norm_residuals_wp.shape)
+        # print(str(self.data_wp[:, :, None] == data_interp(self.X_test)))
+        # print(self.data_wp[:, :, None])
+        # print(data_interp(self.X_test))
+        denom = (np.tile(self.ratio_test, (len(self.nn_orders[self.nn_orders_mask]), 1)).T)**(self.nn_orders[self.nn_orders_mask] + 1) * (np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[self.nn_orders_mask]), 1))**2)).T
+        # print((np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1)).T)**(self.nn_orders[1:] + 1))
+        # print((np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1))**2)).T)
+        # print((denom.T)[:, :, None])
         self.norm_residuals_wp = self.norm_residuals_wp / (denom.T)[:, :, None]
+        # print(self.norm_residuals_wp.T)
         self.gr_dgn_wp = gm.GraphicalDiagnostic(self.norm_residuals_wp.T, 
                             mean=self.mean_wp, cov=self.cov_wp, 
                             colors=self.colors, gray=gray, black=softblack)
+        # norm_trunc_cov = gp_trunc.cov(X[x_valid_mask], start=0, end=0)
+        # norm_residuals = (data_true[x_valid_mask, None] - data[x_valid_mask]) / (ratio**(orders+1) / np.sqrt(1 - ratio**2))
+        # gr_dgn_trunc = gm.GraphicalDiagnostic(norm_residuals, mean=np.zeros(x[x_valid_mask].shape[0]), cov=norm_trunc_cov,
+        #                               colors=colors, gray=gray, black=softblack)
+
         
         fig, ax = plt.subplots(figsize=(3.4, 3.2))
 
