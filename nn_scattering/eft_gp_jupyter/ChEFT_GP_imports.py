@@ -889,7 +889,7 @@ class GSUMDiagnostics:
         if ax is None:
             fig, ax = plt.subplots(figsize=(3.2, 3.2))
         
-        for i, n in enumerate(self.nn_orders[1:]):
+        for i, n in enumerate((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]):
             ax.fill_between(self.x, self.pred[:, i] + 2*self.std, \
                             self.pred[:, i] - 2*self.std, \
                             facecolor = self.light_colors[i], edgecolor = self.colors[i], \
@@ -1154,7 +1154,8 @@ class GSUMDiagnostics:
         except:
             print("Error in plotting the posterior PDF.")
 
-    def PlotTruncationErrors(self, online_data, constraint = None, whether_save = True):
+    def PlotTruncationErrors(self, online_data, constraint = None, residual_plot = True,
+                             whether_save = True):
         """
         Parameters
         ----------
@@ -1162,6 +1163,8 @@ class GSUMDiagnostics:
             Summed order-by-order predictions for an observable.
         constraint : array of arrays, optional
             The constraints for the fit procedure. The default is None.
+        residual_plot : bool, optional
+            Whether to plot the truncation error as residuals or as full sums.
         whether_save : bool, optional
             Whether to save the output. The default is True.
 
@@ -1171,8 +1174,10 @@ class GSUMDiagnostics:
             A figure with the order-by-order residuals plot and a figure with 
             the order-by-order empirical coverage.
         """
+        # sets up the data from PWA93 to which we'll compare
         self.online_data = online_data
         
+        # functions for reference scale and dimensionless expansion parameter (ratio)
         def lambda_interp_f_ref(x_):
             X = np.ravel(x_)
             return self.interp_f_ref(X)
@@ -1181,13 +1186,6 @@ class GSUMDiagnostics:
             return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
         
         # try:
-        # without the constraint
-        # print(self.kernel)
-        # print(self.center)
-        # print(self.disp)
-        # print(self.df)
-        # print(self.std_est)
-        # print(self.Lambda_b)
         self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
                     ratio = lambda_interp_f_ratio, 
                     center = self.center, disp = self.disp, df = self.df, 
@@ -1195,128 +1193,90 @@ class GSUMDiagnostics:
                     ratio_kws = {"lambda_var" : self.Lambda_b})
         
         # fits the GP with or without a constraint
-        # print(self.y_train.shape)
         if constraint is None:
-            self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders)
+            self.gp_trunc.fit(self.X_train, self.y_train, 
+                              orders = self.nn_orders_full, 
+                              orders_eval = self.nn_orders)
         else:
-            self.gp_trunc.fit(self.X_train, self.y_train, orders = self.nn_orders, 
-                              dX = np.array(constraint[0]), dy=constraint[1])
-
-        fig, axes = plt.subplots(3, 2, sharex=True, sharey=False, figsize=(6, 7))
+            self.gp_trunc.fit(self.X_train, self.y_train, 
+                    orders = self.nn_orders_full,
+                    orders_eval = self.nn_orders, 
+                    dX = np.array(constraint[0]), dy=constraint[1])
         
-        # eliminates useless subplots from the truncation error figure
-        if self.scheme == "RKE":
-            fig.delaxes(axes[2, 1])
-            print("We deleted it.")
-        elif self.scheme == "EKM":
-            fig.delaxes(axes[2, 0])
-            fig.delaxes(axes[2, 1])
-        elif self.scheme == "EMN":
-            fig.delaxes(axes[2, 0])
-            fig.delaxes(axes[2, 1])
-        elif self.scheme == "GT":
-            fig.delaxes(axes[1, 0])
-            fig.delaxes(axes[1, 1])
-            fig.delaxes(axes[2, 0])
-            fig.delaxes(axes[2, 1])
+        # creates fig with two columns of axes
+        fig, axes = plt.subplots(int(np.ceil(len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]) / 2)),
+                2, sharex=False, sharey=False, figsize=(6, 7))
+        # deletes extraneous axes to suit number of evaluated orders
+        if 2 * np.ceil(len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]) / 2) > len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]):
+            fig.delaxes(axes[int(np.ceil(len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]) / 2)) - 1, 1])
+        
+        for i, n in enumerate((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]):
+            # calculates the standard deviation of the truncation error
+            _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
+                                    return_std = True, kind = 'trunc')
             
-        if True:
-            # plots the order-by-order residuals
-            # print(self.nn_orders)
-            for i, n in enumerate(self.nn_orders[self.nn_orders_mask]):
-                # print("i = " + str(i))
-                # print("n = " + str(n))
-                _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
-                                        return_std = True, kind = 'trunc')
-                # print("std_trunc = " + str(self.std_trunc))
+            # gets the "true" order-by-order data from online
+            if self.fixed_quantity_name == "energy":
+                data_true = self.online_data[self.fixed_quantity_value, :]
+            elif self.fixed_quantity_name == "angle":
+                if self.fixed_quantity_value == 0:
+                    data_true = self.online_data
+                else:
+                    data_true = self.online_data[:, self.fixed_quantity_value]
+                    
+            for j in range(i, len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted])):
+                ax = axes.ravel()[j]
                 
-                # gets the "true" order-by-order data from online
-                if self.fixed_quantity_name == "energy":
-                    data_true = self.online_data[self.fixed_quantity_value, :]
-                elif self.fixed_quantity_name == "angle":
-                    if self.fixed_quantity_value == 0:
-                        data_true = self.online_data
-                    else:
-                        data_true = self.online_data[:, self.fixed_quantity_value]
-                        
-                for j in range(i, max(self.nn_orders[self.nn_orders_mask])):
-                    # print("j = " + str(j))
-                    ax = axes.ravel()[j]
-                    # print("There are " + str(len(axes.ravel())) + " axes.")
-                    
-                    # calculates the residuals
-                    # print("data_true has shape " + str(data_true.shape))
-                    # print("self.data has shape " + str(self.data.shape))
-                    residual = data_true - (self.data[:, self.nn_orders_mask])[:, i]
-                    # print("residual has shape " + str(residual.shape))
-                    
+                # number of standard deviations around the dotted line to plot
+                std_coverage = 0.64
+                
+                if residual_plot:
+                    # calculates and plots the residuals
+                    residual = data_true - ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i]
                     ax.plot(self.x, residual, zorder=i-5, c = self.colors[i])
-                    for line in self.x_test: ax.axvline(line, 0, 1, c = gray);
-                    # number of standard deviations around the residual to plot
-                    std_coverage = 0.64
-                    ax.fill_between(self.x, residual + std_coverage*self.std_trunc, 
-                                    residual - std_coverage*self.std_trunc, zorder=i-5, 
-                                    facecolor = self.light_colors[i], edgecolor = self.colors[i], 
-                                    lw=edgewidth)
+                    ax.fill_between(self.x, 
+                                residual + std_coverage*self.std_trunc, 
+                                residual - std_coverage*self.std_trunc, 
+                                zorder=i-5, 
+                                facecolor = self.light_colors[i], 
+                                edgecolor = self.colors[i], 
+                                lw=edgewidth)
                     ax.set_ylim(np.min(np.concatenate((residual + std_coverage*self.std_trunc, residual - std_coverage*self.std_trunc))), 
-                                np.max(np.concatenate((residual + std_coverage*self.std_trunc, residual - std_coverage*self.std_trunc))))
+                            np.max(np.concatenate((residual + std_coverage*self.std_trunc, residual - std_coverage*self.std_trunc))))
+            
+                else:
+                    # calculates and plots the true data
+                    ax.plot(self.x, 
+                            ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i], 
+                            zorder=i-5, c = self.colors[i])
+                    ax.fill_between(self.x, 
+                                ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] + std_coverage*self.std_trunc, 
+                                ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] - std_coverage*self.std_trunc, 
+                                zorder=i-5, 
+                                facecolor = self.light_colors[i], 
+                                edgecolor = self.colors[i], 
+                                lw=edgewidth)
+                    ax.set_ylim(np.min(np.concatenate((((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] + std_coverage*self.std_trunc, ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] - std_coverage*self.std_trunc))), 
+                            np.max(np.concatenate((((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] + std_coverage*self.std_trunc, ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] - std_coverage*self.std_trunc))))
                 
-                ax = axes.ravel()[i]
+                # plots the testing points as vertical lines
+                for line in self.x_test: ax.axvline(line, 0, 1, c = gray)
                 
+            ax = axes.ravel()[i]
+            
+            if residual_plot:
+                # plots a line at y = 0
                 ax.plot(self.x, np.zeros(len(self.x)), color=softblack, lw=1, ls='--')
-                
-                ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
-                               min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
-    
-            # Format
-            axes[1, 0].set_xlabel(self.caption_coeffs)
-            axes[1, 1].set_xlabel(self.caption_coeffs)
+            else:
+                # plots the true data
+                ax.plot(self.x, data_true, color=softblack, lw=1, ls='--')
             
-        # else:
-        #     for i, n in enumerate(self.nn_orders[1:]):
-        #         _, self.std_trunc = self.gp_trunc.predict(self.X, order = n, 
-        #                                 return_std = True, kind = 'trunc')
-    
-        #         for j in range(i, max(self.nn_orders)):
-        #             ax = axes.ravel()[j]
-        #             ax.plot(self.x, self.data[:, i+1], zorder=i-5, c = self.colors[i])
-        #             # ax.fill_between(self.x, self.data[:, i+1] + 2*self.std_trunc, 
-        #             #                 self.data[:, i+1] - 2*self.std_trunc, zorder=i-5, 
-        #             #                 facecolor = self.light_colors[i], edgecolor = self.colors[i], 
-        #             #                 lw=edgewidth)
-        #             percent_coverage = 2
-        #             ax.fill_between(self.x, self.data[:, i+1] + percent_coverage*self.std_trunc, 
-        #                             self.data[:, i+1] - percent_coverage*self.std_trunc, zorder=i-5, 
-        #                             facecolor = self.light_colors[i], edgecolor = self.colors[i], 
-        #                             lw=edgewidth)
-        #         ax = axes.ravel()[i]
-        #         if self.fixed_quantity_name == "energy":
-        #             data_true = self.online_data[self.fixed_quantity_value, :]
-        #             ax.plot(self.x, data_true, color=softblack, 
-        #                 lw=1, ls='--')
-        #         elif self.fixed_quantity_name == "angle":
-        #             if self.fixed_quantity_value == 0:
-        #                 data_true = self.online_data
-        #                 ax.plot(self.x, data_true, color=softblack, 
-        #                     lw=1, ls='--')
-        #             else:
-        #                 data_true = self.online_data[:, self.fixed_quantity_value]
-        #                 ax.plot(self.x, data_true, color=softblack, 
-        #                     lw=1, ls='--')
-        #         ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
-        #                        min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
-        #         if self.ref_type == "dimensionless":
-        #             ax.set_yticks([-1.0, -0.5, 0, 0.5, 1.0])
-        #         else:
-        #             ax.set_yticks(np.linspace(min(data_true), max(data_true), 
-        #                                       num = 5, dtype = 'int'))
-        #     ax.set_ylim(min(data_true) - (max(data_true) - min(data_true)) / 2, 
-        #                 max(data_true) + (max(data_true) - min(data_true)) / 2)
-    
-        #     # Format
-        #     axes[1, 0].set_xlabel(self.caption_coeffs)
-        #     axes[1, 1].set_xlabel(self.caption_coeffs)
-            
+            # formats x-axis labels and tick marks
+            ax.set_xlabel(self.caption_coeffs)
+            ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
+                           min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
+        
+        # saves
         if 'fig' in locals() and whether_save:
             fig.suptitle(r'$\mathrm{' + self.observable_name + '\,(' + str(self.fixed_quantity_value) + '\,' + str(self.fixed_quantity_units) + ')\,' + \
                             '\,for\,' + self.scheme + '\,' + self.scale + '}' + '\,(Q_{\mathrm{' + self.Q_param + \
@@ -1340,46 +1300,22 @@ class GSUMDiagnostics:
                     self.train_pts_loc + '_' + self.p_param + 
                     self.filename_addendum).replace('_0MeVlab_', '_'))
         
-        # self.gp_trunc.kernel_
-        # this is copied from PlotCredibleIntervals() and modified only slightly
-        # print("data has shape " + str((self.data[:, 1:]).shape))
-        # print("data_true has shape " + str(data_true.shape))
-        data_interp = interp1d(self.x, self.data[:, self.nn_orders_mask].T)
-        # print((self.data[:, 1:]).shape)
+        # creates interpolation function for the true and theory data
+        data_interp = interp1d(self.x, (self.data[:, self.nn_orders_mask])[:, self.mask_restricted].T)
         data_true_interp = interp1d(self.x, data_true)
-        # self.data_wp = np.reshape(data_interp(self.X_test), (len(self.colors), len(self.X_test)))
-        # print("data_wp has shape " + str(self.data_wp.shape))
+        
+        # calculates the covariance matrix and mean
         self.cov_wp = self.gp_trunc.cov(self.X_test, start = 0, end = np.inf)
-        # print("cov_wp = " + str(self.cov_wp))
         self.mean_wp = self.gp_trunc.mean(self.X_test)
-        # print("mean_wp = " + str(self.mean_wp))
         
         
         # norms the residuals by factors of the ratio
-        # print(self.X_test)
         self.norm_residuals_wp = data_true_interp(self.X_test) - data_interp(self.X_test)
-        # self.norm_residuals_wp = data_true_interp(self.X_test) - self.data_wp[:, :, None]        
-        # print(self.norm_residuals_wp)
-        # print(data_true_interp(self.X_test).shape)
-        # print(data_interp(self.X_test).shape)
-        # print(self.data_wp[:, :, None].shape)
-        # print(self.norm_residuals_wp.shape)
-        # print(str(self.data_wp[:, :, None] == data_interp(self.X_test)))
-        # print(self.data_wp[:, :, None])
-        # print(data_interp(self.X_test))
-        denom = (np.tile(self.ratio_test, (len(self.nn_orders[self.nn_orders_mask]), 1)).T)**(self.nn_orders[self.nn_orders_mask] + 1) * (np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[self.nn_orders_mask]), 1))**2)).T
-        # print((np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1)).T)**(self.nn_orders[1:] + 1))
-        # print((np.sqrt(1 - np.tile(self.ratio_test, (len(self.nn_orders[1:]), 1))**2)).T)
-        # print((denom.T)[:, :, None])
+        denom = (np.tile(self.ratio_test, (len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]), 1)).T)**((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted] + 1) * (np.sqrt(1 - np.tile(self.ratio_test, (len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]), 1))**2)).T
         self.norm_residuals_wp = self.norm_residuals_wp / (denom.T)[:, :, None]
-        # print(self.norm_residuals_wp.T)
         self.gr_dgn_wp = gm.GraphicalDiagnostic(self.norm_residuals_wp.T, 
                             mean=self.mean_wp, cov=self.cov_wp, 
                             colors=self.colors, gray=gray, black=softblack)
-        # norm_trunc_cov = gp_trunc.cov(X[x_valid_mask], start=0, end=0)
-        # norm_residuals = (data_true[x_valid_mask, None] - data[x_valid_mask]) / (ratio**(orders+1) / np.sqrt(1 - ratio**2))
-        # gr_dgn_trunc = gm.GraphicalDiagnostic(norm_residuals, mean=np.zeros(x[x_valid_mask].shape[0]), cov=norm_trunc_cov,
-        #                               colors=colors, gray=gray, black=softblack)
 
         
         fig, ax = plt.subplots(figsize=(3.4, 3.2))
