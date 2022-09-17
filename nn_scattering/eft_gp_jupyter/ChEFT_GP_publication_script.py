@@ -496,6 +496,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                         if observable.ref_type == "dimensionless" else None
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
                                                                 whether_save = save_trunc_bool, 
+                                                                residual_plot = True, 
                                                                 constraint = constraint)
                                 if plot_plotzilla_bool:
                                     MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
@@ -590,7 +591,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                     MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
                                 if plot_trunc_bool:
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
-                                                                whether_save = save_trunc_bool)
+                                                                whether_save = save_trunc_bool, 
+                                                                residual_plot = True)
                                 if plot_plotzilla_bool:
                                     MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
     # except:

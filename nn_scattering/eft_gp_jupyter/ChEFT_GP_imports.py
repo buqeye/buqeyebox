@@ -1186,10 +1186,14 @@ class GSUMDiagnostics:
             return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
         
         # try:
-        self.gp_trunc = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+        self.gp_trunc = gm.TruncationGP(self.kernel, 
+                    ref = lambda_interp_f_ref, 
                     ratio = lambda_interp_f_ratio, 
-                    center = self.center, disp = self.disp, df = self.df, 
-                    scale = self.std_est, excluded = [0], 
+                    center = self.center, 
+                    disp = self.disp, 
+                    df = self.df, 
+                    scale = self.std_est, 
+                    excluded = [0], 
                     ratio_kws = {"lambda_var" : self.Lambda_b})
         
         # fits the GP with or without a constraint
@@ -1305,7 +1309,8 @@ class GSUMDiagnostics:
         data_true_interp = interp1d(self.x, data_true)
         
         # calculates the covariance matrix and mean
-        self.cov_wp = self.gp_trunc.cov(self.X_test, start = 0, end = np.inf)
+        self.cov_wp = self.gp_trunc.cov(self.X_test, start = 0, end = 0)
+        print(self.cov_wp)
         self.mean_wp = self.gp_trunc.mean(self.X_test)
         
         
