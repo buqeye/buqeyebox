@@ -339,19 +339,27 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
         
         # creates the bunch for each observable to be plotted against angle
         SGTBunch = ObservableBunch("SGT", SGT, E_input_array, deg_input_array, 
-                                   '\sigma_{\mathrm{tot}}', "dimensionful")
+                                 '\sigma_{\mathrm{tot}}', "dimensionful")
         DSGBunch = ObservableBunch("DSG", DSG, E_input_array, deg_input_array, 
-                                   '\sigma', "dimensionful")
+                                 '\sigma', "dimensionful")
+        # AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
+        #                          'A_{y}', "dimensionless", 
+        #                          constraint = [np.array([[0, -1]]), [0, 0], "degrees"])
+        # ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
+        #                          'A', "dimensionless", 
+        #                          constraint = [np.array([[0]]), [0], "degrees"])
         AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
-                                  'A_{y}', "dimensionless")
+                                 'A_{y}', "dimensionless", 
+                                 constraint = [[0, -1], [0, 0], "degrees"])
         ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
-                                 'A', "dimensionless")
+                                 'A', "dimensionless", 
+                                 constraint = [[0], [0], "degrees"])
         DBunch = ObservableBunch("D", D, E_input_array, deg_input_array, 
                                  'D', "dimensionless")
         AXXBunch = ObservableBunch("AXX", AXX, E_input_array, deg_input_array,
-                                   'A_{xx}', "dimensionless")
+                                 'A_{xx}', "dimensionless")
         AYYBunch = ObservableBunch("AYY", AYY, E_input_array, deg_input_array,
-                                   'A_{yy}', "dimensionless")
+                                 'A_{yy}', "dimensionless")
     
         observable_array = [SGTBunch, DSGBunch, AYBunch, ABunch, DBunch, AXXBunch, AYYBunch]
         
@@ -470,7 +478,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                                 scalescheme.colors, scalescheme.light_colors, \
                                                 orders_restricted = orders_input_array, \
                                                 mask_restricted = mask_orders)
-                                
+                               
                                 # creates the object used to generate and plot statistical diagnostics
                                 MyPlot = GSUMDiagnostics(observable, Lambdab, vs_quantity, 
                                         traintestsplit, GPHyper, Orders, 
@@ -491,13 +499,9 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 if plot_pdf_bool:
                                     MyPlot.PlotPosteriorPDF(whether_save = save_pdf_bool)
                                 if plot_trunc_bool:
-                                    # constraint = None
-                                    constraint = [np.array([[vs_quantity.input_space(1)]]), [0]] \
-                                        if observable.ref_type == "dimensionless" else None
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
                                                                 whether_save = save_trunc_bool, 
-                                                                residual_plot = True, 
-                                                                constraint = constraint)
+                                                                residual_plot = False)
                                 if plot_plotzilla_bool:
                                     MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
             
@@ -592,7 +596,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 if plot_trunc_bool:
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
                                                                 whether_save = save_trunc_bool, 
-                                                                residual_plot = True)
+                                                                residual_plot = False)
                                 if plot_plotzilla_bool:
                                     MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
     # except:

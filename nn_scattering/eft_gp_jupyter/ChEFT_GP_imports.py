@@ -480,12 +480,13 @@ class ObservableBunch:
     name (string) : (abbreviated) name for the observable
     data (array) : coefficient values at each order over the mesh
     energies (array) : energies at which the observable will be evaluated (None for observables
-    plotted against energy)
+        plotted against energy)
     title (string) : title for the coefficient plot
     ref_type (string) : tells whether the reference scale (to be divided out of the coefficient
-    values) has dimension (e.g., the case of the cross section) or not (e.g., the case of the 
+        values) has dimension (e.g., the case of the cross section) or not (e.g., the case of the 
     spin observables). Can only be "dimensionless" or "dimensionful".
-    constraint (array or None): constraint on the values of the observable
+    constraint (array or None): constraint on the values of the observable, including the 
+        name of the quantity for which the constraint applies.
         For dimensionful (i.e., cross-section) observables, should be None.
     """
     def __init__(self, name, data, energies, angles, title, ref_type, constraint = None):
@@ -495,6 +496,7 @@ class ObservableBunch:
         self.angles = angles
         self.title = title
         self.ref_type = ref_type
+        self.constraint = constraint
         if (ref_type != "dimensionless") and (ref_type != "dimensionful"):
             raise Exception("ref_type must be dimensionless or dimensionful.")
 
@@ -689,6 +691,7 @@ class GSUMDiagnostics:
         self.observable_name = self.observable.name
         self.data = self.observable.data
         self.ref_type = self.observable.ref_type
+        self.constraint = self.observable.constraint
 
         # cutoff scale
         self.Lambda_b = Lambda_b
@@ -1154,7 +1157,7 @@ class GSUMDiagnostics:
         except:
             print("Error in plotting the posterior PDF.")
 
-    def PlotTruncationErrors(self, online_data, constraint = None, residual_plot = True,
+    def PlotTruncationErrors(self, online_data, residual_plot = True,
                              whether_save = True):
         """
         Parameters
@@ -1197,15 +1200,18 @@ class GSUMDiagnostics:
                     ratio_kws = {"lambda_var" : self.Lambda_b})
         
         # fits the GP with or without a constraint
-        if constraint is None:
-            self.gp_trunc.fit(self.X_train, self.y_train, 
-                              orders = self.nn_orders_full, 
-                              orders_eval = self.nn_orders)
-        else:
+        print("constraint is " + str(self.constraint))
+        if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
             self.gp_trunc.fit(self.X_train, self.y_train, 
                     orders = self.nn_orders_full,
                     orders_eval = self.nn_orders, 
-                    dX = np.array(constraint[0]), dy=constraint[1])
+                    dX = np.array([[self.x[i]] for i in self.constraint[0]]), 
+                    dy = [j for j in self.constraint[1]])
+        else:
+            self.gp_trunc.fit(self.X_train, self.y_train, 
+                              orders = self.nn_orders_full, 
+                              orders_eval = self.nn_orders)
+        
         
         # creates fig with two columns of axes
         fig, axes = plt.subplots(int(np.ceil(len((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]) / 2)),
@@ -1287,7 +1293,7 @@ class GSUMDiagnostics:
                             '}},\,\mathrm{' + self.p_param + '},\,\mathrm{' + self.vs_what + '})$', size = 20)
             fig.tight_layout()
             
-            if constraint is None:
+            if self.constraint is None:
                 fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + self.observable_name + '_' + 
                     str(self.fixed_quantity_value) + str(self.fixed_quantity_units) + 
                     '_' + 'full_pred_truncation' + '_' + self.scheme + '_' + 
