@@ -175,9 +175,14 @@ Forwardanglessplit2 = TrainTestSplit("forwardangles2", 6, 3,
 Backwardanglessplit2 = TrainTestSplit("backwardangles2", 6, 3, 
                                     xmin_train_factor = 1/6, xmax_train_factor = 1, 
                                     xmin_test_factor = 1/6, xmax_test_factor = 1)
+Fullspaceanglessplit1 = TrainTestSplit("allangles1", 5, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1)
+Fullspaceanglessplit2 = TrainTestSplit("allangles2", 4, 4, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1)
 # Split1704 = TrainTestSplit("1704", 1, )
 traintestsplit_vsangle_array = [Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit, 
-                                Forwardanglessplit2, Backwardanglessplit2]
+                                Forwardanglessplit2, Backwardanglessplit2, Fullspaceanglessplit1, 
+                                Fullspaceanglessplit2]
 
 # creates the training and testing masks for observables plotted against energy
 Nolowenergysplit = TrainTestSplit("nolowenergy", 3, 4, 
@@ -192,7 +197,12 @@ Allenergysplit = TrainTestSplit("allenergy", 4, 4,
                             offset_train_min_factor = 0, xmin_train_factor = 0, 
                             offset_test_min_factor = 0, xmin_test_factor = 0, 
                             offset_train_max_factor = -50/350, offset_test_max_factor = -50/350)
-traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit, Allenergysplit]
+Allenergysplit1 = TrainTestSplit("allenergy1", 5, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1)
+Allenergysplit2 = TrainTestSplit("allenergy2", 4, 4, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1)
+traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit, Allenergysplit, 
+                                 Allenergysplit1, Allenergysplit2]
 
 def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm], 
                observable_input = ["DSG"], 
@@ -350,10 +360,10 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
         #                          constraint = [np.array([[0]]), [0], "degrees"])
         AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
                                  'A_{y}', "dimensionless", 
-                                 constraint = [[0, -1], [0, 0], "degrees"])
+                                 constraint = [[0, -1], [0, 0], "angle"])
         ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
                                  'A', "dimensionless", 
-                                 constraint = [[0], [0], "degrees"])
+                                 constraint = [[0], [0], "angle"])
         DBunch = ObservableBunch("D", D, E_input_array, deg_input_array, 
                                  'D', "dimensionless")
         AXXBunch = ObservableBunch("AXX", AXX, E_input_array, deg_input_array,
