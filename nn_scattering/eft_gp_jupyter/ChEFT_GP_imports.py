@@ -779,9 +779,9 @@ class GSUMDiagnostics:
             # determines the reference scale for the truncation-error model, including for 
             # training and testing
             if self.ref_type == "dimensionless":
-            	self.ref = np.ones(len(self.x))
-            	self.ref_train = np.ones(len(self.x_train))
-            	self.ref_test = np.ones(len(self.x_test))
+            	self.ref = np.ones(len(self.x)) * 1
+            	self.ref_train = np.ones(len(self.x_train)) * 1
+            	self.ref_test = np.ones(len(self.x_test)) * 1
             elif self.ref_type == "dimensionful":
                 self.ref = self.data[:, -1]
                     
@@ -809,9 +809,9 @@ class GSUMDiagnostics:
             # determines the reference scale for the truncation-error model, including for 
             # training and testing
             if self.ref_type == "dimensionless":
-            	self.ref = np.ones(len(self.x))
-            	self.ref_train = np.ones(len(self.x_train))
-            	self.ref_test = np.ones(len(self.x_test))
+            	self.ref = np.ones(len(self.x)) * 1
+            	self.ref_train = np.ones(len(self.x_train)) * 1
+            	self.ref_test = np.ones(len(self.x_test)) * 1
             elif self.ref_type == "dimensionful":
                 if self.fixed_quantity_value == 0:
                     self.ref = self.data[-1]
@@ -856,7 +856,7 @@ class GSUMDiagnostics:
         # Define the GP
         self.gp = gm.ConjugateGaussianProcess(
             self.kernel, center = self.center, disp = self.disp, df = self.df,
-            scale = self.std_est, n_restarts_optimizer = 10, random_state = self.seed, 
+            scale = self.std_est, n_restarts_optimizer = 50, random_state = self.seed, 
             sd = self.sd)
         
         # restricts coeffs and colors to only those orders desired for 
@@ -885,7 +885,16 @@ class GSUMDiagnostics:
         # length scale
         self.gp.fit(self.X_train, self.coeffs_train)
         self.ls_true = np.exp(self.gp.kernel_.theta)
-        self.pred, self.std = self.gp.predict(self.X, return_std = True)
+        # X_constraint = [self.x[i] for i in self.constraint[0]]
+        # mask_constraint = np.reshape(~ np.isin(self.X_train, X_constraint), len(self.X_train))
+        # print(mask_constraint.shape)
+        # print("mask_constraint = " + str(mask_constraint))
+        # self.pred, self.std = self.gp.predict(self.X, 
+        #                                 Xc = self.X_train[mask_constraint], 
+        #                                 y = self.coeffs_train[mask_constraint, :], 
+        #                                 return_std = True)
+        self.pred, self.std = self.gp.predict(self.X, 
+                                        return_std = True)
         self.underlying_std = np.sqrt(self.gp.cov_factor_)
 
         # plots the coefficients against the given input space
@@ -916,10 +925,14 @@ class GSUMDiagnostics:
         
         if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
             dX = np.array([[self.x[i]] for i in self.constraint[0]])
-            std_interp = np.sqrt(np.diag(
-                self.gp.cov(self.X) -
-                self.gp.cov(self.X, dX) @ np.linalg.solve(self.gp.cov(dX, dX), self.gp.cov(dX, self.X))
-            ))
+            # std_interp = np.sqrt(np.diag(
+            #     self.gp.cov(self.X) -
+            #     self.gp.cov(self.X, dX) @ np.linalg.solve(self.gp.cov(dX, dX), self.gp.cov(dX, self.X))
+            # ))
+            _, std_interp = self.gp.predict(self.X, 
+                                            Xc = dX, 
+                                            y = np.array(self.constraint[1]),
+                                            return_std = True)
             print("We calculated std_interp.")
             ax.plot(self.x, 2*std_interp, color='gray', ls='--', zorder=-10, lw=1)
             ax.plot(self.x, -2*std_interp, color='gray', ls='--', zorder=-10, lw=1)
@@ -986,11 +999,17 @@ class GSUMDiagnostics:
         try:
             # calculates and plots the squared Mahalanobis distance
             self.gp.kernel_
-            self.mean = self.gp.mean(self.X_test)
-            self.cov = self.gp.cov(self.X_test)
+            # self.mean = self.gp.mean(self.X_test)
+            # self.cov = self.gp.cov(self.X_test)
+            dX = np.array([[self.x[i]] for i in self.constraint[0]])
+            self.mean, self.cov = self.gp.predict(self.X_test, 
+                                            Xc = dX, 
+                                            y = np.array(self.constraint[1]),
+                                            return_std = False, 
+                                            return_cov = True)
             self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, 
-                        self.mean, self.cov, colors = self.colors, gray=gray, 
-                        black=softblack)
+                        self.mean, self.cov, colors = self.colors, gray = gray, 
+                        black = softblack)
     
             if ax is None:
                 fig, ax = plt.subplots(figsize=(1, 3.2))
@@ -1029,11 +1048,19 @@ class GSUMDiagnostics:
         try:
             # calculates and plots the pivoted Cholesky decomposition
             self.gp.kernel_
-            self.mean = self.gp.mean(self.X_test)
-            self.cov = self.gp.cov(self.X_test)
-            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
-                                                     self.mean, self.cov, \
-                                                     colors = self.colors, gray=gray, black=softblack)
+            # self.mean = self.gp.mean(self.X_test)
+            # self.cov = self.gp.cov(self.X_test)
+            dX = np.array([[self.x[i]] for i in self.constraint[0]])
+            self.mean, self.cov = self.gp.predict(self.X_test, 
+                                            Xc = dX, 
+                                            y = np.array(self.constraint[1]),
+                                            return_std = False, 
+                                            return_cov = True)
+            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, 
+                                                     self.mean, self.cov, 
+                                                     colors = self.colors, 
+                                                     gray = gray, 
+                                                     black = softblack)
 
             with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
                 if ax is None:

@@ -165,20 +165,23 @@ GT1p2fm = ScaleSchemeBunch('scattering_observables_Gezerlis-1p2fm.h5', \
 # creates the training and testing masks for observables plotted against angle
 Fullspaceanglessplit = TrainTestSplit("allangles", 6, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 1)
+Fullspaceanglessplit1 = TrainTestSplit("allangles1", 5, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1)
+Fullspaceanglessplit2 = TrainTestSplit("allangles2", 4, 4, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1)
 Forwardanglessplit = TrainTestSplit("forwardangles", 6, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 5/6)
 Backwardanglessplit = TrainTestSplit("backwardangles", 6, 3, 
                                     xmin_train_factor = 1/6, xmax_train_factor = 1)
+Backwardanglessplit1 = TrainTestSplit("backwardangles1", 5, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1, 
+                                    xmin_test_factor = 1/5, xmax_test_factor = 1)
 Forwardanglessplit2 = TrainTestSplit("forwardangles2", 6, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 5/6, 
                                     xmin_test_factor = 0, xmax_test_factor = 5/6)
 Backwardanglessplit2 = TrainTestSplit("backwardangles2", 6, 3, 
                                     xmin_train_factor = 1/6, xmax_train_factor = 1, 
                                     xmin_test_factor = 1/6, xmax_test_factor = 1)
-Fullspaceanglessplit1 = TrainTestSplit("allangles1", 5, 3, 
-                                    xmin_train_factor = 0, xmax_train_factor = 1)
-Fullspaceanglessplit2 = TrainTestSplit("allangles2", 4, 4, 
-                                    xmin_train_factor = 0, xmax_train_factor = 1)
 # Split1704 = TrainTestSplit("1704", 1, )
 traintestsplit_vsangle_array = [Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit, 
                                 Forwardanglessplit2, Backwardanglessplit2, Fullspaceanglessplit1, 
@@ -472,7 +475,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 center = 0
                                 df = 1
                                 disp = 0
-                                std_scale = 1
+                                std_scale = 0.25
                                 GPHyper = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
                                                 df = df, disp = disp, scale = std_scale, seed = None, 
                                                 sd = fixed_sd)
