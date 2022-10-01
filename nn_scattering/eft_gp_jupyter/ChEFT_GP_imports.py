@@ -999,17 +999,23 @@ class GSUMDiagnostics:
         try:
             # calculates and plots the squared Mahalanobis distance
             self.gp.kernel_
-            # self.mean = self.gp.mean(self.X_test)
-            # self.cov = self.gp.cov(self.X_test)
-            dX = np.array([[self.x[i]] for i in self.constraint[0]])
-            self.mean, self.cov = self.gp.predict(self.X_test, 
-                                            Xc = dX, 
-                                            y = np.array(self.constraint[1]),
-                                            return_std = False, 
-                                            return_cov = True)
+            
+            if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
+                dX = np.array([[self.x[i]] for i in self.constraint[0]])
+                self.mean, self.cov = self.gp.predict(self.X_test, 
+                                                Xc = dX, 
+                                                y = np.array(self.constraint[1]),
+                                                return_std = False, 
+                                                return_cov = True)
+            else:
+                self.mean = self.gp.mean(self.X_test)
+                self.cov = self.gp.cov(self.X_test)
             self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, 
-                        self.mean, self.cov, colors = self.colors, gray = gray, 
-                        black = softblack)
+                                            self.mean, 
+                                            self.cov, 
+                                            colors = self.colors, 
+                                            gray = gray, 
+                                            black = softblack)
     
             if ax is None:
                 fig, ax = plt.subplots(figsize=(1, 3.2))
@@ -1048,16 +1054,20 @@ class GSUMDiagnostics:
         try:
             # calculates and plots the pivoted Cholesky decomposition
             self.gp.kernel_
-            # self.mean = self.gp.mean(self.X_test)
-            # self.cov = self.gp.cov(self.X_test)
-            dX = np.array([[self.x[i]] for i in self.constraint[0]])
-            self.mean, self.cov = self.gp.predict(self.X_test, 
-                                            Xc = dX, 
-                                            y = np.array(self.constraint[1]),
-                                            return_std = False, 
-                                            return_cov = True)
+            
+            if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
+                dX = np.array([[self.x[i]] for i in self.constraint[0]])
+                self.mean, self.cov = self.gp.predict(self.X_test, 
+                                                Xc = dX, 
+                                                y = np.array(self.constraint[1]),
+                                                return_std = False, 
+                                                return_cov = True)
+            else:
+                self.mean = self.gp.mean(self.X_test)
+                self.cov = self.gp.cov(self.X_test)
             self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, 
-                                                     self.mean, self.cov, 
+                                                     self.mean, 
+                                                     self.cov, 
                                                      colors = self.colors, 
                                                      gray = gray, 
                                                      black = softblack)
@@ -1117,14 +1127,28 @@ class GSUMDiagnostics:
             self.lambda_vals = self.posteriorgrid.y_vals
             
             # creates and fits the TruncationGP
-            self.gp_post = gm.TruncationGP(self.kernel, ref = lambda_interp_f_ref, 
+            self.gp_post = gm.TruncationGP(self.kernel, 
+                                           ref = lambda_interp_f_ref, 
                                         ratio = lambda_interp_f_ratio, 
                                         center = self.center, 
-                                        disp = self.disp, df = self.df, scale = self.std_est, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
                                         excluded = [0], 
                                         ratio_kws = {"lambda_var" : self.Lambda_b})
-            self.gp_post.fit(self.X_train, self.y_train, orders = self.nn_orders_full, 
-                             orders_eval = self.nn_orders, dX = np.array([[0]]), dy=[0])
+            
+            if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
+                self.gp_post.fit(self.X_train, 
+                                 self.y_train, 
+                                 orders = self.nn_orders_full,
+                                 orders_eval = self.nn_orders, 
+                                 dX = np.array([[self.x[i]] for i in self.constraint[0]]), 
+                                 dy = [j for j in self.constraint[1]])
+            else:
+                self.gp_post.fit(self.X_train, 
+                                 self.y_train, 
+                                 orders = self.nn_orders_full, 
+                                 orders_eval = self.nn_orders)
             
             # evaluates the probability across the mesh
             self.ls_lambda_loglike = np.array([[
@@ -1413,12 +1437,23 @@ class GSUMDiagnostics:
         try:
             # calculates and plots credible intervals ("weather plots")
             self.gp.kernel_
-            self.mean = self.gp.mean(self.X_test)
-            self.cov = self.gp.cov(self.X_test)
             
-            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, \
-                                self.mean, self.cov, colors = self.colors, gray = gray, \
-                                black=softblack)
+            if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
+                dX = np.array([[self.x[i]] for i in self.constraint[0]])
+                self.mean, self.cov = self.gp.predict(self.X_test, 
+                                                Xc = dX, 
+                                                y = np.array(self.constraint[1]),
+                                                return_std = False, 
+                                                return_cov = True)
+            else:
+                self.mean = self.gp.mean(self.X_test)
+                self.cov = self.gp.cov(self.X_test)
+            self.gr_dgn = gm.GraphicalDiagnostic(self.coeffs_test, 
+                                                 self.mean, 
+                                                 self.cov, 
+                                                 colors = self.colors, 
+                                                 gray = gray, 
+                                                 black=softblack)
             
             if ax is None:
                 fig, ax = plt.subplots(figsize=(3.4, 3.2))

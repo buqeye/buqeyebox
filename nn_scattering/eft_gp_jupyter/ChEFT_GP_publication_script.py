@@ -356,17 +356,15 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
         DSGBunch = ObservableBunch("DSG", DSG, E_input_array, deg_input_array, 
                                  '\sigma', "dimensionful")
         # AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
-        #                          'A_{y}', "dimensionless", 
-        #                          constraint = [np.array([[0, -1]]), [0, 0], "degrees"])
+        #                           'A_{y}', "dimensionless")
         # ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
-        #                          'A', "dimensionless", 
-        #                          constraint = [np.array([[0]]), [0], "degrees"])
+        #                           'A', "dimensionless")
         AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
-                                 'A_{y}', "dimensionless", 
-                                 constraint = [[0, -1], [0, 0], "angle"])
+                                  'A_{y}', "dimensionless", 
+                                  constraint = [[0, -1], [0, 0], "angle"])
         ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
-                                 'A', "dimensionless", 
-                                 constraint = [[0], [0], "angle"])
+                                  'A', "dimensionless", 
+                                  constraint = [[0], [0], "angle"])
         DBunch = ObservableBunch("D", D, E_input_array, deg_input_array, 
                                  'D', "dimensionless")
         AXXBunch = ObservableBunch("AXX", AXX, E_input_array, deg_input_array,
@@ -569,7 +567,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 center = 0
                                 df = 1
                                 disp = 0
-                                std_scale = 1
+                                std_scale = 0.25
                                 GPHyper = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
                                                 df = df, disp = disp, scale = std_scale, seed = None, 
                                                 sd = fixed_sd)
