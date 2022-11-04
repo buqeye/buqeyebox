@@ -219,6 +219,9 @@ def deg_to_qcm2(p, deg):
     """
     return (p * np.sqrt( 2 * (1 - np.cos(np.radians(deg))) ))**(2)
 
+def sin_thing(deg):
+    return np.array([np.sin(np.radians(d)) if d <= 90 else 2 - np.sin(np.radians(d)) for d in deg])
+
 def softmax_mom(p, q, n = 5):
     """
     Two-place softmax function.
@@ -233,6 +236,32 @@ def softmax_mom(p, q, n = 5):
             scaling parameter.
     """
     return 1 / n * math.log(1.01**(n * p) + 1.01**(n * q), 1.01)
+
+def Lb_logprior(Lambda_b):
+    """Melendez et al., Eq. (31)"""
+    return np.where((300 <= Lambda_b) & (Lambda_b <= 1500), np.log(1. / Lambda_b), -np.inf)
+
+def compute_posterior_intervals(model, data, ratios, ref, orders, max_idx, logprior, Lb):
+    model.fit(data[:max_idx+1].T, ratio=ratios[0], ref=ref, orders=orders[:max_idx+1])
+    log_like = np.array([model.log_likelihood(ratio=ratio) for ratio in ratios])
+    log_like += logprior
+    posterior = np.exp(log_like - np.max(log_like))
+    posterior /= np.trapz(posterior, x=Lb)  # Normalize
+
+    bounds = np.zeros((2,2))
+    for i, p in enumerate([0.68, 0.95]):
+        # bounds[i] = gm.hpd_pdf(pdf=posterior, alpha=p, x=Lb, disp=False)
+        bounds[i] = gm.hpd_pdf(pdf=posterior, alpha=p, x=Lb)
+
+    median = gm.median_pdf(pdf=posterior, x=Lb)
+    return posterior, bounds, median
+
+def draw_summary_statistics(bounds68, bounds95, median, height=0, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    ax.plot(bounds68, [height, height], c='darkgrey', lw=6, solid_capstyle='round')
+    ax.plot(bounds95, [height, height], c='darkgrey', lw=2, solid_capstyle='round')
+    ax.plot([median], [height], c='white', marker='o', zorder=10, markersize=3)
 
 class GPHyperparameters:
     def __init__(self, ls_class, center, ratio, nugget = 1e-10, seed = None, df = np.inf, \
@@ -578,6 +607,7 @@ class TrainTestSplit:
             orders
         """
         self.x = x
+        print(self.x)
         self.y = y
         
         # calculates the actual value for each offset, xmin, and xmax
@@ -706,6 +736,7 @@ class GSUMDiagnostics:
         # angle or energy mesh
         self.x_quantity_name = x_quantity[0]
         self.x_quantity_array = x_quantity[1]
+        print(self.x_quantity_array)
         self.x_quantity_units = x_quantity[2]
         
         # information on the input space
@@ -753,7 +784,9 @@ class GSUMDiagnostics:
         # print(self.orders_restricted)
         self.mask_restricted = self.orderinfo.mask_restricted
         # print(self.mask_restricted)
-        
+        # self.raw_data_mask = np.array([*[True], *(self.nn_orders_mask[1:])[self.mask_restricted]])
+        self.raw_data_mask = np.array([*[True], *(self.mask_restricted)])
+                                       
         # information for naming the file
         self.filenaming = filenaming
         self.scheme = self.filenaming.scheme
@@ -779,9 +812,27 @@ class GSUMDiagnostics:
             # determines the reference scale for the truncation-error model, including for 
             # training and testing
             if self.ref_type == "dimensionless":
-            	self.ref = np.ones(len(self.x)) * 1
-            	self.ref_train = np.ones(len(self.x_train)) * 1
-            	self.ref_test = np.ones(len(self.x_test)) * 1
+                self.ref = np.ones(len(self.x)) * 1
+                self.ref_train = np.ones(len(self.x_train)) * 1
+                self.ref_test = np.ones(len(self.x_test)) * 1
+                # if self.observable_name == "AY":
+                #     self.ref = np.sin(np.radians(self.x_quantity_array))
+                #     self.interp_f_ref = interp1d(self.x, self.ref)
+                #     print("Radians are " + str(np.radians(self.x_quantity_array)))
+                #     print("AY's ref is " + str(self.ref))
+                #     self.ref_train = self.interp_f_ref(self.x_train)
+                #     self.ref_test = self.interp_f_ref(self.x_test)
+                # elif self.observable_name == "A":
+                #     self.ref = np.sin(np.radians(self.x_quantity_array) / 2)
+                #     self.interp_f_ref = interp1d(self.x, self.ref)
+                #     print("Radians are " + str(np.radians(self.x_quantity_array)))
+                #     print("A's ref is " + str(self.ref))
+                #     self.ref_train = self.interp_f_ref(self.x_train)
+                #     self.ref_test = self.interp_f_ref(self.x_test)
+                # else:
+                # 	self.ref = np.ones(len(self.x)) * 1
+                # 	self.ref_train = np.ones(len(self.x_train)) * 1
+                # 	self.ref_test = np.ones(len(self.x_test)) * 1
             elif self.ref_type == "dimensionful":
                 self.ref = self.data[:, -1]
                     
@@ -847,7 +898,7 @@ class GSUMDiagnostics:
                 self.fixed_quantity_value >= 1.:
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
-                        WhiteKernel(1e-8, noise_level_bounds = 'fixed')
+                        WhiteKernel(1e-6, noise_level_bounds = 'fixed')
         else:
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
@@ -899,7 +950,8 @@ class GSUMDiagnostics:
 
         # plots the coefficients against the given input space
         if ax is None:
-            fig, ax = plt.subplots(figsize=(3.2, 3.2))
+            # fig, ax = plt.subplots(figsize=(3.2, 3.2))
+            fig, ax = plt.subplots(figsize=(2.1, 2.1))
         
         for i, n in enumerate((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted]):
             ax.fill_between(self.x, self.pred[:, i] + 2*self.std, \
@@ -919,9 +971,9 @@ class GSUMDiagnostics:
         ax.set_xticks(self.x_train)
         ax.tick_params(which='minor', bottom=True, top=False)
         ax.set_xlabel(self.caption_coeffs)
-        ax.legend(ncol=2, borderpad=0.4,# labelspacing=0.5, columnspacing=1.3,
-                  borderaxespad=0.6, loc = 'upper right',
-                  title = self.title_coeffs).set_zorder(5 * i)
+        # ax.legend(ncol=2, borderpad=0.4,# labelspacing=0.5, columnspacing=1.3,
+        #           borderaxespad=0.6, loc = 'upper right',
+        #           title = self.title_coeffs).set_zorder(5 * i)
         
         if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
             dX = np.array([[self.x[i]] for i in self.constraint[0]])
@@ -1018,7 +1070,8 @@ class GSUMDiagnostics:
                                             black = softblack)
     
             if ax is None:
-                fig, ax = plt.subplots(figsize=(1, 3.2))
+                # fig, ax = plt.subplots(figsize=(1, 3.2))
+                fig, ax = plt.subplots(figsize=(0.7, 4.2))
                 
             self.gr_dgn.md_squared(type = 'box', trim = False, title = None, \
                             xlabel=r'$\mathrm{D}_{\mathrm{MD}}^2$', ax = ax)
@@ -1074,7 +1127,8 @@ class GSUMDiagnostics:
 
             with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
                 if ax is None:
-                    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+                    # fig, ax = plt.subplots(figsize=(3.2, 3.2))
+                    fig, ax = plt.subplots(figsize=(2.1, 2.1))
                     
                 self.gr_dgn.pivoted_cholesky_errors(ax = ax, title = None)
                 ax.set_xticks(np.arange(2, self.n_test_pts + 1, 2))
@@ -1137,6 +1191,7 @@ class GSUMDiagnostics:
                                         excluded = [0], 
                                         ratio_kws = {"lambda_var" : self.Lambda_b})
             
+            print("y_train has dimensions " + str(self.y_train.shape))
             if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
                 self.gp_post.fit(self.X_train, 
                                  self.y_train, 
@@ -1330,8 +1385,8 @@ class GSUMDiagnostics:
                         ax.set_ylim(np.min(np.concatenate((((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] + std_coverage*self.std_trunc, ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] - std_coverage*self.std_trunc))), 
                                 np.max(np.concatenate((((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] + std_coverage*self.std_trunc, ((self.data[:, self.nn_orders_mask])[:, self.mask_restricted])[:, i] - std_coverage*self.std_trunc))))
                     
-                    # plots the testing points as vertical lines
-                    for line in self.x_test: ax.axvline(line, 0, 1, c = gray)
+                    # # plots the testing points as vertical lines
+                    # for line in self.x_test: ax.axvline(line, 0, 1, c = gray)
                     
                 ax = axes.ravel()[i]
                 
@@ -1344,8 +1399,9 @@ class GSUMDiagnostics:
                 
                 # formats x-axis labels and tick marks
                 ax.set_xlabel(self.caption_coeffs)
-                ax.set_xticks([min(self.x) + (max(self.x) - min(self.x)) / 3, 
-                               min(self.x) + (max(self.x) - min(self.x)) / 3 * 2])
+                ax.set_xticks([int(min(self.x) + (max(self.x) - min(self.x)) / 3), 
+                                int(min(self.x) + (max(self.x) - min(self.x)) / 3 * 2)])
+                ax.set_xticks([tick for tick in self.x_test], minor = True)
             
             # saves
             if 'fig' in locals() and whether_save:
@@ -1481,6 +1537,615 @@ class GSUMDiagnostics:
         
         except:
             print("Error in plotting the credible intervals.")
+    
+    def PlotLambdaPosterior(self, SGT, DSG, AY, A, D, AXX, AYY, t_lab, degrees, 
+                            ax = None, whether_save = True):
+        # def lambda_interp_f_ref(x_):
+        #     X = np.ravel(x_)
+        #     return self.interp_f_ref(X)
+        # def lambda_interp_f_ratio(x_, lambda_var):
+        #     X = np.ravel(x_)
+        #     return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
+        
+        # t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
+        # degrees_Lb = np.array([30, 60, 90, 120, 150])
+        # # t_lab_Lb = np.array([96, 143, 200, 300])
+        # # degrees_Lb = np.array([60, 120])
+        # X_Lb = gm.cartesian(t_lab_Lb, degrees_Lb)
+        # print(X_Lb)
+        # Lb_colors = self.colors[-2:]
+        # # print(self.light_colors)
+        # print(Lb_colors)
+        # Lambda_b_array = np.arange(1, 1501, 1)
+        
+        # # scale invariant: df = 0
+        # Lb_model = gm.TruncationPointwise(df = 0, excluded = [0])
+        
+        # ratios_sgt_Lb = [Q_approx(E_to_p(t_lab_Lb, "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
+        # ratios_dsg_Lb = [Q_approx(E_to_p(X_Lb[:, 0], "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
+        # print(np.shape(ratios_sgt_Lb))
+        # print(np.shape(ratios_dsg_Lb))
+        # print(X_Lb[:, 0])
+        # logprior = Lb_logprior(Lambda_b_array)
+        
+        # print(self.nn_orders_mask)
+        # print(self.mask_restricted)
+        # print(self.raw_data_mask)
+        # print(self.nn_orders)
+        # print(self.nn_orders_full)
+        # print(self.nn_orders_full[self.nn_orders_mask])
+        # print((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted])
+       
+        
+        # # Mask unused SGT data, and compute results
+        # print(SGT.shape)
+        # print(SGT[self.nn_orders_mask, :].shape)
+        # print((SGT[self.nn_orders_mask, :])[self.mask_restricted, :].shape)
+        # sgt_Lb = (SGT[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)]
+        # sgt_Lb_nho_result = compute_posterior_intervals(
+        #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 2,
+        #     logprior=logprior, Lb=Lambda_b_array)
+        # sgt_Lb_ho_result = compute_posterior_intervals(
+        #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 1,
+        #     logprior = logprior, Lb = Lambda_b_array)
+        
+        # # Mask unused DSG data, and compute results
+        # dsg_Lb = np.reshape((DSG[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+        # print("dsg_Lb = " + str(dsg_Lb))
+        # dsg_Lb_nho_result = compute_posterior_intervals(
+        #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 2,
+        #     logprior = logprior, Lb = Lambda_b_array)
+        # dsg_Lb_ho_result = compute_posterior_intervals(
+        #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 1,
+        #     logprior = logprior, Lb = Lambda_b_array)
+        
+        # # Concatenate all spin observable data into one long vector, and compute results
+        # spins_Lb = np.concatenate([
+        #     np.reshape((spin[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+        #     for spin in [AY, D, A, AXX, AYY]],
+        #     axis=1)
+        # ratios_spins_Lb = np.concatenate([ratios_dsg_Lb for i in [AY, D, A, AXX, AYY]], axis=1)
+        # spins_Lb_nho_result = compute_posterior_intervals(
+        #     Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 2,
+        #     logprior = logprior, Lb = Lambda_b_array)
+        # spins_Lb_ho_result = compute_posterior_intervals(
+        #     Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 1,
+        #     logprior = logprior, Lb = Lambda_b_array)
+        
+        # # Gather the above results
+        # results = [
+        #     sgt_Lb_nho_result, sgt_Lb_ho_result,
+        #     dsg_Lb_nho_result, dsg_Lb_ho_result,
+        #     spins_Lb_nho_result, spins_Lb_ho_result
+        # ]
+        # # results = [dsg_Lb_n4lo_result]
+        
+        # # Plot each posterior and its summary statistics
+        # fig, ax = plt.subplots(1, 1, figsize=(3.4, 3.4))
+        # for i, (posterior, bounds, median) in enumerate(results):
+        #     posterior = posterior / (1.2*np.max(posterior))  # Scale so they're all the same height
+        #     # Make the lines taper off
+        #     Lb_vals = Lambda_b_array[posterior > 1e-2]
+        #     posterior = posterior[posterior > 1e-2]
+        #     # Plot and fill posterior, and add summary statistics
+        #     ax.plot(Lb_vals, posterior-i, c='darkgrey')
+        #     ax.fill_between(Lb_vals, -i, posterior-i, facecolor=Lb_colors[i % 2])
+        #     draw_summary_statistics(*bounds, median, ax=ax, height=-i)
+        
+        # # Plot formatting
+        # ax.set_yticks([-0, -2, -4])
+        # ax.set_yticks([-1.1, -3.1], minor=True)
+        # ax.set_yticklabels([r'$\sigma$', r'$\displaystyle\frac{d\sigma}{d\Omega}$', r'$X_{pqik}$'])
+        # ax.tick_params(axis='both', which='both', direction='in')
+        # ax.tick_params(which='major', length=0)
+        # ax.tick_params(which='minor', length=7, right=True)
+        # ax.set_xlim(0, 1200)
+        # ax.set_xticks([0, 300, 600, 900, 1200])
+        # ax.set_xlabel(r'$\Lambda_b$ (MeV)')
+        # ax.grid(axis='x')
+        # ax.set_axisbelow(True)
+        
+        # functions for interpolating the ratio and reference scale in the TruncationGP
+        # def lambda_interp_f_ref(x_):
+        #     X = np.ravel(x_)
+        #     return self.interp_f_ref(X)
+        def lambda_interp_f_ratio_Lb_tlab(x_, lambda_var):
+            X = np.ravel(x_)
+            return interp_f_ratio_Lb_tlab(X) * self.Lambda_b / lambda_var
+        def lambda_interp_f_ratio_Lb_degrees(x_, lambda_var):
+            X = np.ravel(x_)
+            return interp_f_ratio_Lb_degrees(X) * self.Lambda_b / lambda_var
+        
+        interp_f_ratio_Lb_tlab = interp1d(E_to_p(t_lab, "np"), 
+                Q_approx(E_to_p(t_lab, "np"), self.Q_param, self.Lambda_b, interaction='np'))
+        # interp_f_ratio_Lb_degrees = interp1d(-1. * np.cos(np.radians(degrees)),
+        #         Q_approx(E_to_p(t_lab_prime_loop, "np"), self.Q_param, self.Lambda_b, interaction='np') * len(degrees))
+        
+        
+        # try:
+        # t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
+        t_lab_Lb = np.array([50, 100])
+        t_lab_Lb_prime = E_to_p(t_lab_Lb, "np")
+        # degrees_Lb = np.array([30, 60, 90, 120, 150])
+        degrees_Lb = np.array([26, 51, 77, 103, 129, 154])
+        degrees_Lb_prime = -1. * np.cos(np.radians(degrees_Lb))
+        # t_lab_Lb = np.array([96, 143, 200, 300])
+        # degrees_Lb = np.array([60, 120])
+        X_Lb = gm.cartesian(t_lab_Lb, degrees_Lb)
+        X_Lb_prime = gm.cartesian(t_lab_Lb_prime, degrees_Lb_prime)
+        print(X_Lb_prime)
+        Lb_colors = self.colors[-2:]
+        # print(self.light_colors)
+        print(Lb_colors)
+        # Lambda_b_array = np.arange(1, 1501, 1)
+        
+        # ratios_sgt_Lb = [Q_approx(E_to_p(t_lab_Lb, "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
+        # print(np.shape(ratios_sgt_Lb))
+        # ratios_dsg_Lb = [Q_approx(E_to_p(X_Lb[:, 0], "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
+        # # print(ratios_dsg_Lb[13])
+        # logprior = Lb_logprior(Lambda_b_array)
+        
+        # creates the grid over which the posterior PDF will be plotted
+        # self.ls_vals = self.posteriorgrid.x_vals
+        # self.lambda_vals = self.posteriorgrid.y_vals
+        lambda_vals_Lb = np.arange(301, 1501, 1)
+        ls_vals_Lb = np.arange(0.02, 2.02, 0.02)
+        
+        # # creates and fits the TruncationGP
+        # self.gp_post = gm.TruncationGP(self.kernel, 
+        #                             ref = lambda_interp_f_ref, 
+        #                             ratio = lambda_interp_f_ratio, 
+        #                             center = self.center, 
+        #                             disp = self.disp, 
+        #                             df = self.df, 
+        #                             scale = self.std_est, 
+        #                             excluded = [0], 
+        #                             ratio_kws = {"lambda_var" : self.Lambda_b})
+        
+        # Mask unused SGT data, and compute results
+        print(SGT.shape)
+        print(SGT[self.nn_orders_mask, :].shape)
+        print((SGT[self.nn_orders_mask, :])[self.mask_restricted, :].shape)
+        sgt_Lb = (SGT[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)]
+        print("sgt_Lb has shape " + str(sgt_Lb.shape))
+        # creates and fits the TruncationGP
+        gp_post_sgt_Lb_nho = gm.TruncationGP(self.kernel, 
+                                    ref = sgt_Lb[0], 
+                                    ratio = lambda_interp_f_ratio_Lb_tlab, 
+                                    center = self.center, 
+                                    disp = self.disp, 
+                                    df = self.df, 
+                                    scale = self.std_est, 
+                                    excluded = [0], 
+                                    ratio_kws = {"lambda_var" : self.Lambda_b})
+        gp_post_sgt_Lb_nho.fit(t_lab_Lb_prime[:, None],  
+                              sgt_Lb.T, 
+                              orders = self.nn_orders_full, 
+                              orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+        gp_post_sgt_Lb_ho = gm.TruncationGP(self.kernel, 
+                                    ref = sgt_Lb[0], 
+                                    ratio = lambda_interp_f_ratio_Lb_tlab, 
+                                    center = self.center, 
+                                    disp = self.disp, 
+                                    df = self.df, 
+                                    scale = self.std_est, 
+                                    excluded = [0], 
+                                    ratio_kws = {"lambda_var" : self.Lambda_b})
+        gp_post_sgt_Lb_ho.fit(t_lab_Lb_prime[:, None],  
+                              sgt_Lb.T, 
+                              orders = self.nn_orders_full, 
+                              orders_eval = self.nn_orders[:len(self.nn_orders)])
+        # sgt_Lb_nho_result = compute_posterior_intervals(
+        #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 2,
+        #     logprior=logprior, Lb=Lambda_b_array)
+        # sgt_Lb_ho_result = compute_posterior_intervals(
+        #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+        #     orders = self.nn_orders, 
+        #     max_idx = max(self.nn_orders) - 1,
+        #     logprior = logprior, Lb = Lambda_b_array)
+        
+        # evaluates the probability across the mesh
+        ls_lambda_loglike_nho = np.array([[
+            gp_post_sgt_Lb_nho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                                                  **{"lambda_var" : lambda_})
+                for ls_ in np.log(ls_vals_Lb)]
+                for lambda_ in lambda_vals_Lb])
+
+        # Makes sure that the values don't get too big or too small
+        ls_lambda_like_nho = np.exp(ls_lambda_loglike_nho - np.max(ls_lambda_loglike_nho))
+
+        # Now compute the marginal distributions
+        lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
+        # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+
+        # Normalize them
+        lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
+        # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+
+        sgt_Lb_nho_result = lambda_like_nho
+        
+        ls_lambda_loglike_ho = np.array([[
+            gp_post_sgt_Lb_ho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders)],
+                                                  **{"lambda_var" : lambda_})
+                for ls_ in np.log(ls_vals_Lb)]
+                for lambda_ in lambda_vals_Lb])
+
+        # Makes sure that the values don't get too big or too small
+        ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
+
+        # Now compute the marginal distributions
+        lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
+        # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+
+        # Normalize them
+        lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
+        # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+
+        sgt_Lb_ho_result = lambda_like_ho
+            
+        dsg_Lb_nho_result = np.zeros((len(lambda_vals_Lb)))
+        dsg_Lb_ho_result = np.zeros((len(lambda_vals_Lb)))
+        spins_Lb_nho_result = np.zeros((len(lambda_vals_Lb)))
+        spins_Lb_ho_result = np.zeros((len(lambda_vals_Lb)))
+        
+        for t_lab_Lb_loop in zip(t_lab_Lb, t_lab_Lb_prime):
+            print(np.shape(-1. * np.cos(np.radians(degrees))))
+            print(np.shape(Q_approx(E_to_p(t_lab_Lb_loop[1], "np"), self.Q_param, self.Lambda_b, interaction='np') * np.ones((len(degrees)))))
+            interp_f_ratio_Lb_degrees = interp1d(-1. * np.cos(np.radians(degrees)),
+                    Q_approx(E_to_p(t_lab_Lb_loop[1], "np"), self.Q_param, self.Lambda_b, interaction='np') * np.ones((len(degrees))))
+            # # Mask unused DSG data, and compute results
+            dsg_Lb = np.reshape((DSG[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            print("dsg_Lb has shape " + str(np.shape(dsg_Lb)))
+            # # print("dsg_Lb = " + str(dsg_Lb))
+            # dsg_Lb_nho_result = compute_posterior_intervals(
+            #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+            #     orders = self.nn_orders, 
+            #     max_idx = max(self.nn_orders) - 2,
+            #     logprior = logprior, Lb = Lambda_b_array)
+            # dsg_Lb_ho_result = compute_posterior_intervals(
+            #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+            #     orders = self.nn_orders, 
+            #     max_idx = max(self.nn_orders) - 1,
+            #     logprior = logprior, Lb = Lambda_b_array)
+            gp_post_dsg_Lb_nho = gm.TruncationGP(self.kernel, 
+                                        ref = dsg_Lb[0], 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_dsg_Lb_nho.fit(degrees_Lb_prime[:, None],  
+                                  dsg_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+            gp_post_dsg_Lb_ho = gm.TruncationGP(self.kernel, 
+                                        ref = dsg_Lb[0], 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_dsg_Lb_ho.fit(degrees_Lb_prime[:, None],  
+                                  dsg_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
+            
+            # evaluates the probability across the mesh
+            ls_lambda_loglike_nho = np.array([[
+                gp_post_dsg_Lb_nho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                                                      **{"lambda_var" : lambda_})
+                    for ls_ in np.log(ls_vals_Lb)]
+                    for lambda_ in lambda_vals_Lb])
+
+            # Makes sure that the values don't get too big or too small
+            ls_lambda_like_nho = np.exp(ls_lambda_loglike_nho - np.max(ls_lambda_loglike_nho))
+    
+            # Now compute the marginal distributions
+            lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
+            # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+    
+            # Normalize them
+            lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
+            # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+    
+            dsg_Lb_nho_result += lambda_like_nho
+            
+            ls_lambda_loglike_ho = np.array([[
+                gp_post_dsg_Lb_ho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders)],
+                                                      **{"lambda_var" : lambda_})
+                    for ls_ in np.log(ls_vals_Lb)]
+                    for lambda_ in lambda_vals_Lb])
+
+            # Makes sure that the values don't get too big or too small
+            ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
+    
+            # Now compute the marginal distributions
+            lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
+            # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+    
+            # Normalize them
+            lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
+            # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+    
+            dsg_Lb_ho_result += lambda_like_ho
+            
+            # # Concatenate all spin observable data into one long vector, and compute results
+            # spins_Lb = np.concatenate([
+            #     np.reshape((spin[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            #     for spin in [AY, D, A, AXX, AYY]],
+            #     axis=1)
+            # ratios_spins_Lb = np.concatenate([ratios_dsg_Lb for i in [AY, D, A, AXX, AYY]], axis=1)
+            # # spins_Lb_nho_result = compute_posterior_intervals(
+            # #     Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
+            # #     orders = self.nn_orders, 
+            # #     max_idx = max(self.nn_orders) - 2,
+            # #     logprior = logprior, Lb = Lambda_b_array)
+            # # spins_Lb_ho_result = compute_posterior_intervals(
+            # #     Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
+            # #     orders = self.nn_orders, 
+            # #     max_idx = max(self.nn_orders) - 1,
+            # #     logprior = logprior, Lb = Lambda_b_array)
+            
+            # # if self.constraint is not None and self.constraint[2] == self.x_quantity_name:
+            # #     self.gp_post.fit(self.X_train, 
+            # #                      self.y_train, 
+            # #                      orders = self.nn_orders_full,
+            # #                      orders_eval = self.nn_orders, 
+            # #                      dX = np.array([[self.x[i]] for i in self.constraint[0]]), 
+            # #                      dy = [j for j in self.constraint[1]])
+            # # else:
+            # # self.gp_post.fit(self.X_train, 
+            # #                      self.y_train, 
+            # #                      orders = self.nn_orders_full, 
+            # #                      orders_eval = self.nn_orders)
+            
+            ay_Lb = np.reshape((AY[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            gp_post_ay_Lb_nho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_ay_Lb_nho.fit(degrees_Lb_prime[:, None],  
+                                  ay_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+            gp_post_ay_Lb_ho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_ay_Lb_ho.fit(degrees_Lb_prime[:, None],  
+                                  ay_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
+            
+            a_Lb = np.reshape((A[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            gp_post_a_Lb_nho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_a_Lb_nho.fit(degrees_Lb_prime[:, None],  
+                                  a_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+            gp_post_a_Lb_ho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_a_Lb_ho.fit(degrees_Lb_prime[:, None],  
+                                  a_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
+            
+            d_Lb = np.reshape((D[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            gp_post_d_Lb_nho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_d_Lb_nho.fit(degrees_Lb_prime[:, None],  
+                                  d_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+            gp_post_d_Lb_ho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_d_Lb_ho.fit(degrees_Lb_prime[:, None],  
+                                  d_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
+            
+            axx_Lb = np.reshape((AXX[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            gp_post_axx_Lb_nho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_axx_Lb_nho.fit(degrees_Lb_prime[:, None],  
+                                  axx_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+            gp_post_axx_Lb_ho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_axx_Lb_ho.fit(degrees_Lb_prime[:, None],  
+                                  axx_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
+            
+            ayy_Lb = np.reshape((AYY[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            gp_post_ayy_Lb_nho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_ayy_Lb_nho.fit(degrees_Lb_prime[:, None],  
+                                  ayy_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+            gp_post_ayy_Lb_ho = gm.TruncationGP(self.kernel, 
+                                        ref = np.ones((len(degrees_Lb))), 
+                                        ratio = lambda_interp_f_ratio_Lb_degrees, 
+                                        center = self.center, 
+                                        disp = self.disp, 
+                                        df = self.df, 
+                                        scale = self.std_est, 
+                                        excluded = [0], 
+                                        ratio_kws = {"lambda_var" : self.Lambda_b})
+            gp_post_ayy_Lb_ho.fit(degrees_Lb_prime[:, None],  
+                                  ayy_Lb.T, 
+                                  orders = self.nn_orders_full, 
+                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
+            
+            gp_fits_spins_nho = [gp_post_ay_Lb_nho, gp_post_a_Lb_nho, 
+                        gp_post_d_Lb_nho, gp_post_axx_Lb_nho, gp_post_ayy_Lb_nho]
+            gp_fits_spins_ho = [gp_post_ay_Lb_ho, gp_post_a_Lb_ho, 
+                        gp_post_d_Lb_ho, gp_post_axx_Lb_ho, gp_post_ayy_Lb_ho]
+            
+            for gp_fit_spins in gp_fits_spins_nho:
+                # evaluates the probability across the mesh
+                ls_lambda_loglike_nho = np.array([[
+                    gp_fit_spins.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                                                          **{"lambda_var" : lambda_})
+                        for ls_ in np.log(ls_vals_Lb)]
+                        for lambda_ in lambda_vals_Lb])
+    
+                # Makes sure that the values don't get too big or too small
+                ls_lambda_like_nho = np.exp(ls_lambda_loglike_nho - np.max(ls_lambda_loglike_nho))
+        
+                # Now compute the marginal distributions
+                lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
+                # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+        
+                # Normalize them
+                lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
+                # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+        
+                spins_Lb_nho_result += lambda_like_nho
+            
+            for gp_fit_spins in gp_fits_spins_ho:
+                # evaluates the probability across the mesh
+                ls_lambda_loglike_ho = np.array([[
+                    gp_fit_spins.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders)],
+                                                          **{"lambda_var" : lambda_})
+                        for ls_ in np.log(ls_vals_Lb)]
+                        for lambda_ in lambda_vals_Lb])
+    
+                # Makes sure that the values don't get too big or too small
+                ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
+        
+                # Now compute the marginal distributions
+                lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
+                # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+        
+                # Normalize them
+                lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
+                # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+        
+                spins_Lb_ho_result += lambda_like_ho
+        
+        # Normalize them
+        dsg_Lb_ho_result /= np.trapz(dsg_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
+        dsg_Lb_nho_result /= np.trapz(dsg_Lb_nho_result, x = lambda_vals_Lb, axis = 0)
+        spins_Lb_ho_result /= np.trapz(spins_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
+        spins_Lb_ho_result /= np.trapz(spins_Lb_nho_result, x = lambda_vals_Lb, axis = 0)
+        
+        # Gather the above results
+        results = [
+            sgt_Lb_nho_result, sgt_Lb_ho_result,
+            dsg_Lb_nho_result, dsg_Lb_ho_result,
+            spins_Lb_nho_result, spins_Lb_ho_result
+        ]
+        # results = [dsg_Lb_n4lo_result]
+        
+        # Plot each posterior and its summary statistics
+        fig, ax = plt.subplots(1, 1, figsize=(3.4, 3.4))
+        # for i, (posterior, bounds, median) in enumerate(results):
+        for i, posterior in enumerate(results):
+            posterior = posterior / (1.2*np.max(posterior))  # Scale so they're all the same height
+            # Make the lines taper off
+            Lb_vals = lambda_vals_Lb[posterior > 1e-2]
+            posterior = posterior[posterior > 1e-2]
+            # Plot and fill posterior, and add summary statistics
+            ax.plot(Lb_vals, posterior-i, c='darkgrey')
+            ax.fill_between(Lb_vals, -i, posterior-i, facecolor=Lb_colors[i % 2])
+            # draw_summary_statistics(*bounds, median, ax=ax, height=-i)
+        
+        # Plot formatting
+        ax.set_yticks([-0, -2, -4])
+        ax.set_yticks([-1.1, -3.1], minor=True)
+        ax.set_yticklabels([r'$\sigma$', r'$\displaystyle\frac{d\sigma}{d\Omega}$', r'$X_{pqik}$'])
+        ax.tick_params(axis='both', which='both', direction='in')
+        ax.tick_params(which='major', length=0)
+        ax.tick_params(which='minor', length=7, right=True)
+        ax.set_xlim(0, 1200)
+        ax.set_xticks([0, 300, 600, 900, 1200])
+        ax.set_xlabel(r'$\Lambda_b$ (MeV)')
+        ax.grid(axis='x')
+        ax.set_axisbelow(True)
+        
+        # except:
+        #     print("Error in plotting the posterior PDF.")
 
     def Plotzilla(self, whether_save = True):
         """

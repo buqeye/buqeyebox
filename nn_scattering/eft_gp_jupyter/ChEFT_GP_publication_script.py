@@ -13,7 +13,7 @@ import numpy as np
 # import re
 import gc
 from ChEFT_GP_imports import joint_plot, offset_xlabel, m_p, m_n, hbarc, E_to_p, Q_approx, \
-p_approx, deg_to_qcm, deg_to_qcm2, softmax_mom, GPHyperparameters, FileNaming, PosteriorBounds, \
+p_approx, deg_to_qcm, deg_to_qcm2, sin_thing, softmax_mom, GPHyperparameters, FileNaming, PosteriorBounds, \
 OrderInfo, versatile_train_test_split, InputSpaceBunch, \
 ObservableBunch, Interpolation, TrainTestSplit, ScaleSchemeBunch, LengthScale, \
 GSUMDiagnostics
@@ -171,17 +171,23 @@ Fullspaceanglessplit2 = TrainTestSplit("allangles2", 4, 4,
                                     xmin_train_factor = 0, xmax_train_factor = 1)
 Forwardanglessplit = TrainTestSplit("forwardangles", 6, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 5/6)
+Forwardanglessplit1 = TrainTestSplit("forwardangles1", 5, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1, 
+                                    xmin_test_factor = 0, xmax_test_factor = 4/5)
+Forwardanglessplit2 = TrainTestSplit("forwardangles2", 6, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 5/6, 
+                                    xmin_test_factor = 0, xmax_test_factor = 5/6)
 Backwardanglessplit = TrainTestSplit("backwardangles", 6, 3, 
                                     xmin_train_factor = 1/6, xmax_train_factor = 1)
 Backwardanglessplit1 = TrainTestSplit("backwardangles1", 5, 3, 
                                     xmin_train_factor = 0, xmax_train_factor = 1, 
                                     xmin_test_factor = 1/5, xmax_test_factor = 1)
-Forwardanglessplit2 = TrainTestSplit("forwardangles2", 6, 3, 
-                                    xmin_train_factor = 0, xmax_train_factor = 5/6, 
-                                    xmin_test_factor = 0, xmax_test_factor = 5/6)
 Backwardanglessplit2 = TrainTestSplit("backwardangles2", 6, 3, 
                                     xmin_train_factor = 1/6, xmax_train_factor = 1, 
                                     xmin_test_factor = 1/6, xmax_test_factor = 1)
+Middleanglessplit1 = TrainTestSplit("middleangles1", 5, 3, 
+                                    xmin_train_factor = 0, xmax_train_factor = 1, 
+                                    xmin_test_factor = 1/5, xmax_test_factor = 4/5)
 # Split1704 = TrainTestSplit("1704", 1, )
 traintestsplit_vsangle_array = [Fullspaceanglessplit, Forwardanglessplit, Backwardanglessplit, 
                                 Forwardanglessplit2, Backwardanglessplit2, Fullspaceanglessplit1, 
@@ -227,13 +233,15 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                plot_ci_bool = True, 
                plot_pdf_bool = True, 
                plot_trunc_bool = True, 
+               plot_lambdapost_bool = True, 
                plot_plotzilla_bool = True, 
                save_coeffs_bool = True, 
                save_md_bool = True, 
                save_pc_bool = True, 
                save_ci_bool = True, 
                save_pdf_bool = True, 
-               save_trunc_bool= True, 
+               save_trunc_bool= True,
+               save_lambdapost_bool = True, 
                save_plotzilla_bool = True, 
                filename_addendum = ""):
     """
@@ -354,7 +362,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
         SGTBunch = ObservableBunch("SGT", SGT, E_input_array, deg_input_array, 
                                  '\sigma_{\mathrm{tot}}', "dimensionful")
         DSGBunch = ObservableBunch("DSG", DSG, E_input_array, deg_input_array, 
-                                 '\sigma', "dimensionful")
+                                 'd \sigma / d \Omega', "dimensionful")
         # AYBunch = ObservableBunch("AY", AY, E_input_array, deg_input_array, 
         #                           'A_{y}', "dimensionless")
         # ABunch = ObservableBunch("A", A, E_input_array, deg_input_array, 
@@ -424,6 +432,12 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                         r'$-\mathrm{cos}(\theta)$', 
                                         [r'$', observable.title, r'(-\mathrm{cos}(\theta), E_{\mathrm{lab}}= ', 
                                           E_lab, '\,\mathrm{MeV})$'])
+                    SinBunch = InputSpaceBunch("sin", 
+                                        lambda x : sin_thing(x), 
+                                        p_approx(p_param_method, E_to_p(E_lab, "np"), degrees), 
+                                        r'$\mathrm{sin}(\theta)$', 
+                                        [r'$', observable.title, r'(\mathrm{sin}(\theta), E_{\mathrm{lab}}= ', 
+                                          E_lab, '\,\mathrm{MeV})$'])
                     QcmBunch = InputSpaceBunch("qcm", 
                                         lambda x : deg_to_qcm(E_to_p(E_lab, "np"), x), 
                                         p_approx(p_param_method, E_to_p(E_lab, "np"), degrees), 
@@ -437,7 +451,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                         [r'$', observable.title, r'(q_{\mathrm{cm}}^{2}, E_{\mathrm{lab}}= ', 
                                           E_lab, '\,\mathrm{MeV})$'])
                 
-                    vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch]
+                    vsquantity_array = [DegBunch, CosBunch, QcmBunch, Qcm2Bunch, SinBunch]
                     vsquantity_array = [b for b in vsquantity_array if b.name in input_space_input]
                     
                     # creates each input space bunch's title
@@ -513,6 +527,17 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
                                                                 whether_save = save_trunc_bool, 
                                                                 residual_plot = False)
+                                if plot_lambdapost_bool:
+                                    MyPlot.PlotLambdaPosterior(SGT = SGT, 
+                                                               DSG = DSG, 
+                                                               AY = AY, 
+                                                               A = A, 
+                                                               D = D, 
+                                                               AXX = AXX, 
+                                                               AYY = AYY, 
+                                                               t_lab = t_lab, 
+                                                               degrees = degrees, 
+                                                               whether_save = save_lambdapost_bool)
                                 if plot_plotzilla_bool:
                                     MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
             
