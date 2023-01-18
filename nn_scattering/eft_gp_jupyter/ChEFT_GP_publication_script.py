@@ -34,7 +34,7 @@ mpl.rcParams['font.size'] = 9
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['font.family'] = 'serif'
 
-mpl.rcParams['axes.labelsize'] = 9
+mpl.rcParams['axes.labelsize'] = 14 # 9
 mpl.rcParams['axes.edgecolor'] = softblack
 mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.labelcolor'] = softblack
@@ -42,21 +42,23 @@ mpl.rcParams['axes.linewidth']
 
 mpl.rcParams['ytick.direction'] = 'in'
 mpl.rcParams['xtick.direction'] = 'in'
-mpl.rcParams['xtick.labelsize'] = 9
-mpl.rcParams['ytick.labelsize'] = 9
+mpl.rcParams['xtick.labelsize'] = 12 # 9
+mpl.rcParams['ytick.labelsize'] = 12 # 9
 mpl.rcParams['xtick.color'] = softblack
 mpl.rcParams['ytick.color'] = softblack
 mpl.rcParams['xtick.minor.size'] = 2.4
 mpl.rcParams['ytick.minor.size'] = 2.4
 
 mpl.rcParams['legend.title_fontsize'] = 9
-mpl.rcParams['legend.fontsize'] = 9
+mpl.rcParams['legend.fontsize'] = 11 # 9
 mpl.rcParams['legend.edgecolor'] = 'inherit'  # inherits from axes.edgecolor, to match
 mpl.rcParams['legend.facecolor'] = (1, 1, 1, 0.6)  # Set facecolor with its own alpha, so edgecolor is unaffected
 mpl.rcParams['legend.fancybox'] = True
 mpl.rcParams['legend.borderaxespad'] = 0.8
 mpl.rcParams['legend.framealpha'] = None  # Do not set overall alpha (affects edgecolor). Handled by facecolor above
 mpl.rcParams['patch.linewidth'] = 0.8  # This is for legend edgewidth, since it does not have its own option
+
+# mpl.rcParams['lines.markersize'] = 5
 
 text_bbox = dict(boxstyle='round', fc=(1, 1, 1, 0.6), ec=softblack, lw=0.8)
 mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, format='pdf')
@@ -92,40 +94,40 @@ online_data_dict = {"SGT" : SGT_nn_online,
 EKM0p8fm = ScaleSchemeBunch('scattering_observables_EKM_R-0p8fm.h5', \
             np.array([0, 2, 3, 4, 5]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds']], \
-            "EKM", "0p8fm")
+            "SCS", "0p8fm")
 EKM0p9fm = ScaleSchemeBunch('scattering_observables_EKM_R-0p9fm.h5', \
             np.array([0, 2, 3, 4, 5]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds']], \
-            "EKM", "0p9fm")
+            "SCS", "0p9fm")
 EKM1p0fm = ScaleSchemeBunch('scattering_observables_EKM_R-1p0fm.h5', \
             np.array([0, 2, 3, 4, 5]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds']], \
-            "EKM", "1p0fm")
+            "SCS", "1p0fm")
 EKM1p1fm = ScaleSchemeBunch('scattering_observables_EKM_R-1p1fm.h5', \
             np.array([0, 2, 3, 4, 5]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds']], \
-            "EKM", "1p1fm")
+            "SCS", "1p1fm")
 EKM1p2fm = ScaleSchemeBunch('scattering_observables_EKM_R-1p2fm.h5', \
             np.array([0, 2, 3, 4, 5]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds']], \
-            "EKM", "1p2fm")
+            "SCS", "1p2fm")
 
 RKE400MeV = ScaleSchemeBunch('scattering_observables_RKE_L-400MeV.h5', \
             np.array([0, 2, 3, 4, 5, 6]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds', 'Purples']], \
-            "RKE", "400MeV")
+            "SMS", "400MeV")
 RKE450MeV = ScaleSchemeBunch('scattering_observables_RKE_L-450MeV.h5', \
             np.array([0, 2, 3, 4, 5, 6]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds', 'Purples']], \
-            "RKE", "450MeV")
+            "SMS", "450MeV")
 RKE500MeV = ScaleSchemeBunch('scattering_observables_RKE_L-500MeV.h5', \
             np.array([0, 2, 3, 4, 5, 6]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds', 'Purples']], \
-            "RKE", "500MeV")
+            "SMS", "500MeV")
 RKE550MeV = ScaleSchemeBunch('scattering_observables_RKE_L-550MeV.h5', \
             np.array([0, 2, 3, 4, 5, 6]), \
             [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds', 'Purples']], \
-            "RKE", "550MeV")
+            "SMS", "550MeV")
 
 EMN450MeV = ScaleSchemeBunch('scattering_observables_EM-450MeV.h5', \
             np.array([0, 2, 3, 4, 5]), \
@@ -213,14 +215,14 @@ Allenergysplit2 = TrainTestSplit("allenergy2", 4, 4,
 traintestsplit_vsenergy_array = [Nolowenergysplit, Yeslowenergysplit, Allenergysplit, 
                                  Allenergysplit1, Allenergysplit2]
 
-def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm], 
+def GPAnalysis(scale_scheme_bunch_array = [RKE450MeV], 
                observable_input = ["DSG"], 
                E_input_array = [150],
                deg_input_array = [0],
-               Q_param_method_array = ["poly"], 
-               p_param_method_array = ["Qofpq"], 
+               Q_param_method_array = ["sum"], 
+               p_param_method_array = ["Qofprel"], 
                input_space_input = ["cos"], 
-               train_test_split_array = [Fullspaceanglessplit], 
+               train_test_split_array = [Fullspaceanglessplit1], 
                orders_input = "all", 
                length_scale_input = LengthScale("1/16-1_fitted", 0.25, 0.25, 4, whether_fit = True),
                fixed_sd = None, 
@@ -233,7 +235,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                plot_ci_bool = True, 
                plot_pdf_bool = True, 
                plot_trunc_bool = True, 
-               plot_lambdapost_bool = True, 
+               plot_lambdapost_pointwise_bool = False, 
+               plot_lambdapost_curvewise_bool = False, 
                plot_plotzilla_bool = True, 
                save_coeffs_bool = True, 
                save_md_bool = True, 
@@ -241,7 +244,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                save_ci_bool = True, 
                save_pdf_bool = True, 
                save_trunc_bool= True,
-               save_lambdapost_bool = True, 
+               save_lambdapost_pointwise_bool = False, 
+               save_lambdapost_curvewise_bool = False, 
                save_plotzilla_bool = True, 
                filename_addendum = ""):
     """
@@ -487,7 +491,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 center = 0
                                 df = 1
                                 disp = 0
-                                std_scale = 0.25
+                                std_scale = 1
                                 GPHyper = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
                                                 df = df, disp = disp, scale = std_scale, seed = None, 
                                                 sd = fixed_sd)
@@ -499,9 +503,9 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                                 filename_addendum = filename_addendum)
             
                                 # information on the orders for each potential
-                                Orders = OrderInfo(scalescheme.orders_full, mask_full, \
-                                                scalescheme.colors, scalescheme.light_colors, \
-                                                orders_restricted = orders_input_array, \
+                                Orders = OrderInfo(scalescheme.orders_full, mask_full, 
+                                                scalescheme.colors, scalescheme.light_colors, 
+                                                orders_restricted = orders_input_array, 
                                                 mask_restricted = mask_orders)
                                
                                 # creates the object used to generate and plot statistical diagnostics
@@ -527,8 +531,8 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                     MyPlot.PlotTruncationErrors(online_data_dict[observable.name], 
                                                                 whether_save = save_trunc_bool, 
                                                                 residual_plot = False)
-                                if plot_lambdapost_bool:
-                                    MyPlot.PlotLambdaPosterior(SGT = SGT, 
+                                if plot_lambdapost_pointwise_bool:
+                                    MyPlot.PlotLambdaPosteriorPointwise(SGT = SGT, 
                                                                DSG = DSG, 
                                                                AY = AY, 
                                                                A = A, 
@@ -537,7 +541,18 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                                                AYY = AYY, 
                                                                t_lab = t_lab, 
                                                                degrees = degrees, 
-                                                               whether_save = save_lambdapost_bool)
+                                                               whether_save = save_lambdapost_pointwise_bool)
+                                if plot_lambdapost_curvewise_bool:
+                                    MyPlot.PlotLambdaPosteriorCurvewise(SGT = SGT, 
+                                                               DSG = DSG, 
+                                                               AY = AY, 
+                                                               A = A, 
+                                                               D = D, 
+                                                               AXX = AXX, 
+                                                               AYY = AYY, 
+                                                               t_lab = t_lab, 
+                                                               degrees = degrees, 
+                                                               whether_save = save_lambdapost_curvewise_bool)
                                 if plot_plotzilla_bool:
                                     MyPlot.Plotzilla(whether_save = save_plotzilla_bool)
             
@@ -592,7 +607,7 @@ def GPAnalysis(scale_scheme_bunch_array = [EKM0p9fm],
                                 center = 0
                                 df = 1
                                 disp = 0
-                                std_scale = 0.25
+                                std_scale = 1
                                 GPHyper = GPHyperparameters(LengthScaleGuess, center, ratio_dsg, 
                                                 df = df, disp = disp, scale = std_scale, seed = None, 
                                                 sd = fixed_sd)

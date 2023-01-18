@@ -23,7 +23,7 @@ mpl.rcParams['font.size'] = 9
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['font.family'] = 'serif'
 
-mpl.rcParams['axes.labelsize'] = 9
+mpl.rcParams['axes.labelsize'] = 14 # 9
 mpl.rcParams['axes.edgecolor'] = softblack
 mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.labelcolor'] = softblack
@@ -31,21 +31,23 @@ mpl.rcParams['axes.linewidth']
 
 mpl.rcParams['ytick.direction'] = 'in'
 mpl.rcParams['xtick.direction'] = 'in'
-mpl.rcParams['xtick.labelsize'] = 9
-mpl.rcParams['ytick.labelsize'] = 9
+mpl.rcParams['xtick.labelsize'] = 11 # 9
+mpl.rcParams['ytick.labelsize'] = 11 # 9
 mpl.rcParams['xtick.color'] = softblack
 mpl.rcParams['ytick.color'] = softblack
 mpl.rcParams['xtick.minor.size'] = 2.4
 mpl.rcParams['ytick.minor.size'] = 2.4
 
 mpl.rcParams['legend.title_fontsize'] = 9
-mpl.rcParams['legend.fontsize'] = 9
+mpl.rcParams['legend.fontsize'] = 14 # 9
 mpl.rcParams['legend.edgecolor'] = 'inherit'  # inherits from axes.edgecolor, to match
 mpl.rcParams['legend.facecolor'] = (1, 1, 1, 0.6)  # Set facecolor with its own alpha, so edgecolor is unaffected
 mpl.rcParams['legend.fancybox'] = True
 mpl.rcParams['legend.borderaxespad'] = 0.8
 mpl.rcParams['legend.framealpha'] = None  # Do not set overall alpha (affects edgecolor). Handled by facecolor above
 mpl.rcParams['patch.linewidth'] = 0.8  # This is for legend edgewidth, since it does not have its own option
+
+mpl.rcParams['lines.markersize'] = 10
 
 text_bbox = dict(boxstyle='round', fc=(1, 1, 1, 0.6), ec=softblack, lw=0.8)
 mpl.rc('savefig', transparent=False, bbox='tight', pad_inches=0.05, dpi=300, format='pdf')
@@ -166,7 +168,7 @@ def Q_approx(p, Q_parametrization, Lambda_b, interaction='np', single_expansion=
     
     elif Q_parametrization == "sum":
         # Transition from m_pi to p with a simple sum
-        q = (p + m_pi) / Lambda_b
+        q = (p + m_pi) / (1.5 * Lambda_b)
         return q
     
 def p_approx(p_name, prel, degrees):
@@ -242,7 +244,13 @@ def Lb_logprior(Lambda_b):
     return np.where((300 <= Lambda_b) & (Lambda_b <= 1500), np.log(1. / Lambda_b), -np.inf)
 
 def compute_posterior_intervals(model, data, ratios, ref, orders, max_idx, logprior, Lb):
+    # print("We're about to fit.")
+    print("data has shape " + str(np.shape(data[:max_idx+1].T)))
+    print("ratio has shape " + str(np.shape(ratios[0])))
+    print("ref has shape " + str(np.shape(ref)))
+    print("orders has shape " + str(np.shape(orders[:max_idx+1])))
     model.fit(data[:max_idx+1].T, ratio=ratios[0], ref=ref, orders=orders[:max_idx+1])
+    # raise ValueError("something")
     log_like = np.array([model.log_likelihood(ratio=ratio) for ratio in ratios])
     log_like += logprior
     posterior = np.exp(log_like - np.max(log_like))
@@ -259,12 +267,12 @@ def compute_posterior_intervals(model, data, ratios, ref, orders, max_idx, logpr
 def draw_summary_statistics(bounds68, bounds95, median, height=0, ax=None):
     if ax is None:
         ax = plt.gca()
-    ax.plot(bounds68, [height, height], c='darkgrey', lw=6, solid_capstyle='round')
-    ax.plot(bounds95, [height, height], c='darkgrey', lw=2, solid_capstyle='round')
+    ax.plot(bounds68, [height, height], c='gray', lw=6, solid_capstyle='round')
+    ax.plot(bounds95, [height, height], c='gray', lw=2, solid_capstyle='round')
     ax.plot([median], [height], c='white', marker='o', zorder=10, markersize=3)
 
 class GPHyperparameters:
-    def __init__(self, ls_class, center, ratio, nugget = 1e-10, seed = None, df = np.inf, \
+    def __init__(self, ls_class, center, ratio, nugget = 1e-10, seed = None, df = np.inf, 
                  disp = 0, scale = 1, sd = None):
         """
         Class for the hyperparameters of a Gaussian process.
@@ -607,7 +615,7 @@ class TrainTestSplit:
             orders
         """
         self.x = x
-        print(self.x)
+        # print(self.x)
         self.y = y
         
         # calculates the actual value for each offset, xmin, and xmax
@@ -659,7 +667,7 @@ class ScaleSchemeBunch:
         self.full_path = self.dir_path + self.file_name
         
         self.colors = [cmap(0.55 - 0.1 * (i==0)) for i, cmap in enumerate(self.cmaps)]
-        self.light_colors = [cmap(0.25) for cmap in self.cmaps]
+        self.light_colors = [cmap(0.35) for cmap in self.cmaps]
 
     def get_data(self, observable_string):
         response = h5py.File(self.full_path, "r")
@@ -736,7 +744,7 @@ class GSUMDiagnostics:
         # angle or energy mesh
         self.x_quantity_name = x_quantity[0]
         self.x_quantity_array = x_quantity[1]
-        print(self.x_quantity_array)
+        # print(self.x_quantity_array)
         self.x_quantity_units = x_quantity[2]
         
         # information on the input space
@@ -903,6 +911,7 @@ class GSUMDiagnostics:
             self.kernel = RBF(length_scale = self.ls, \
                         length_scale_bounds = (self.ls_lower, self.ls_upper)) + \
                         WhiteKernel(1e-10, noise_level_bounds = 'fixed')
+        print(self.kernel)
 
         # Define the GP
         self.gp = gm.ConjugateGaussianProcess(
@@ -944,8 +953,7 @@ class GSUMDiagnostics:
         #                                 Xc = self.X_train[mask_constraint], 
         #                                 y = self.coeffs_train[mask_constraint, :], 
         #                                 return_std = True)
-        self.pred, self.std = self.gp.predict(self.X, 
-                                        return_std = True)
+        self.pred, self.std = self.gp.predict(self.X, return_std = True)
         self.underlying_std = np.sqrt(self.gp.cov_factor_)
 
         # plots the coefficients against the given input space
@@ -967,10 +975,17 @@ class GSUMDiagnostics:
         ax.axhline(2*self.underlying_std, 0, 1, color = gray, zorder=-10, lw=1)
         ax.axhline(-2*self.underlying_std, 0, 1, color = gray, zorder=-10, lw=1)
         ax.axhline(0, 0, 1, color = softblack, zorder=-10, lw=1)
-        ax.set_xticks(self.x_test, minor=True)
-        ax.set_xticks(self.x_train)
+        if np.max(self.x) < 1.1:
+            ax.set_xticks(self.x_test, minor=True)
+            ax.set_xticks([round(xx, 1) for xx in self.x_train])
+        else:
+            ax.set_xticks(self.x_test, minor=True)
+            ax.set_xticks([round(xx, 0) for xx in self.x_train])
         ax.tick_params(which='minor', bottom=True, top=False)
-        ax.set_xlabel(self.caption_coeffs)
+        # ax.set_xlabel(self.caption_coeffs)
+        ax.set_yticks(ticks = [-2*self.underlying_std, 2*self.underlying_std])
+        ax.set_yticklabels(labels = ['{:.1f}'.format(-2*self.underlying_std), '{:.1f}'.format(2*self.underlying_std)])
+        ax.set_yticks([-1 * self.underlying_std, self.underlying_std], minor = True)
         # ax.legend(ncol=2, borderpad=0.4,# labelspacing=0.5, columnspacing=1.3,
         #           borderaxespad=0.6, loc = 'upper right',
         #           title = self.title_coeffs).set_zorder(5 * i)
@@ -990,40 +1005,40 @@ class GSUMDiagnostics:
             ax.plot(self.x, -2*std_interp, color='gray', ls='--', zorder=-10, lw=1)
         
         # draws length scales
-        ax.annotate("", xy=(np.min(self.x), -0.8*2*self.underlying_std), 
-                    xytext=(np.min(self.x) + self.ls, -0.8*2*self.underlying_std),
+        ax.annotate("", xy=(np.min(self.x), -0.65*2*self.underlying_std), 
+                    xytext=(np.min(self.x) + self.ls, -0.65*2*self.underlying_std),
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + self.ls + 0.1 * (np.max(self.x) - np.min(self.x)), 
-                -0.8*2*self.underlying_std, r'$\ell_{\mathrm{guess}}$', 
+        ax.text(np.min(self.x) + self.ls + 0.2 * (np.max(self.x) - np.min(self.x)), 
+                -0.65*2*self.underlying_std, r'$\ell_{\mathrm{guess}}$', fontsize = 14, 
                 horizontalalignment='right', verticalalignment='center', zorder = 5 * i)
 
-        ax.annotate("", xy=(np.min(self.x), -0.95*2*self.underlying_std), \
-                    xytext=(np.min(self.x) + self.ls_true, -0.95*2*self.underlying_std),
+        ax.annotate("", xy=(np.min(self.x), -0.9*2*self.underlying_std), \
+                    xytext=(np.min(self.x) + self.ls_true, -0.9*2*self.underlying_std),
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + self.ls_true + 0.1 * (np.max(self.x) - np.min(self.x)), 
-                -0.95*2*self.underlying_std, \
-                r'$\ell_{\mathrm{fit}}$', horizontalalignment='right', verticalalignment='center', zorder = 5 * i)
+        ax.text(np.min(self.x) + self.ls_true + 0.2 * (np.max(self.x) - np.min(self.x)), 
+                -0.9*2*self.underlying_std, r'$\ell_{\mathrm{fit}}$', fontsize = 14, 
+                horizontalalignment='right', verticalalignment='center', zorder = 5 * i)
         
         # draws standard deviations
-        ax.annotate("", xy=(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), 0), \
-                    xytext=(np.min(self.x) + 0.94 * (np.max(self.x) - np.min(self.x)), \
+        ax.annotate("", xy=(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), 0), \
+                    xytext=(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), \
                             -1. * self.std_est),
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + 0.96 * (np.max(self.x) - np.min(self.x)), \
-                -1.2 * self.std_est, r'$\sigma_{\mathrm{guess}}$', horizontalalignment='center', \
-                verticalalignment='bottom', zorder = 5 * i)
-        ax.annotate("", xy=(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), 0), \
-                    xytext=(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), \
+        ax.text(np.min(self.x) + 0.90 * (np.max(self.x) - np.min(self.x)), 
+                -1.2 * self.std_est, r'$\sigma_{\mathrm{guess}}$', fontsize = 14, 
+                horizontalalignment='center', verticalalignment='bottom', zorder = 5 * i)
+            
+        ax.annotate("", xy=(np.min(self.x) + 0.74 * (np.max(self.x) - np.min(self.x)), 0), \
+                    xytext=(np.min(self.x) + 0.74 * (np.max(self.x) - np.min(self.x)), \
                             -1. * self.underlying_std),
-                        
                     arrowprops=dict(arrowstyle="<->", capstyle='projecting', lw=1,
                                     color='k'), annotation_clip=False, zorder = 5 * i)
-        ax.text(np.min(self.x) + 0.88 * (np.max(self.x) - np.min(self.x)), \
-                -1.2 * self.underlying_std, r'$\sigma_{\mathrm{fit}}$', horizontalalignment='center', \
-                verticalalignment='bottom', zorder = 5 * i)
+        ax.text(np.min(self.x) + 0.74 * (np.max(self.x) - np.min(self.x)), 
+                -1.2 * self.underlying_std, r'$\sigma_{\mathrm{fit}}$', fontsize= 14, 
+                horizontalalignment='center', verticalalignment='bottom', zorder = 5 * i)
         
         if 'fig' in locals() and whether_save:
             fig.tight_layout()
@@ -1073,8 +1088,9 @@ class GSUMDiagnostics:
                 # fig, ax = plt.subplots(figsize=(1, 3.2))
                 fig, ax = plt.subplots(figsize=(0.7, 4.2))
                 
-            self.gr_dgn.md_squared(type = 'box', trim = False, title = None, \
-                            xlabel=r'$\mathrm{D}_{\mathrm{MD}}^2$', ax = ax)
+            self.gr_dgn.md_squared(type = 'box', trim = False, title = None, 
+                            xlabel=r'$\mathrm{D}_{\mathrm{MD}}^2$', ax = ax, 
+                            **{"size" : 10})
             offset_xlabel(ax)
             # ax.set_ylim(0, 100)
             
@@ -1133,7 +1149,7 @@ class GSUMDiagnostics:
                 self.gr_dgn.pivoted_cholesky_errors(ax = ax, title = None)
                 ax.set_xticks(np.arange(2, self.n_test_pts + 1, 2))
                 ax.set_xticks(np.arange(1, self.n_test_pts + 1, 2), minor = True)
-                ax.text(0.05, 0.95, r'$\mathrm{D}_{\mathrm{PC}}$', bbox = text_bbox, \
+                ax.text(0.05, 0.95, r'$\mathrm{D}_{\mathrm{PC}}$', bbox = text_bbox, 
                         transform = ax.transAxes, va='top', ha='left')
                 ax.set_ylim(-6, 6)
                 
@@ -1255,9 +1271,7 @@ class GSUMDiagnostics:
                 ax_marg_x.set_ylim(bottom=0);
                 ax_marg_y.set_xlim(left=0);
                 ax_joint.text(0.95, 0.95, r'pr$(\ell, \Lambda \,|\, \vec{\mathbf{y}}_k)$', ha='right', va='top',
-                              transform=ax_joint.transAxes,
-                              bbox=text_bbox
-                              );
+                              transform=ax_joint.transAxes, bbox=text_bbox, fontsize = 12)
     
                 plt.show()
                 
@@ -1538,124 +1552,168 @@ class GSUMDiagnostics:
         except:
             print("Error in plotting the credible intervals.")
     
-    def PlotLambdaPosterior(self, SGT, DSG, AY, A, D, AXX, AYY, t_lab, degrees, 
+    def PlotLambdaPosteriorPointwise(self, SGT, DSG, AY, A, D, AXX, AYY, t_lab, degrees, 
                             ax = None, whether_save = True):
-        # def lambda_interp_f_ref(x_):
-        #     X = np.ravel(x_)
-        #     return self.interp_f_ref(X)
-        # def lambda_interp_f_ratio(x_, lambda_var):
-        #     X = np.ravel(x_)
-        #     return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
+        def lambda_interp_f_ref(x_):
+            X = np.ravel(x_)
+            return self.interp_f_ref(X)
+        def lambda_interp_f_ratio(x_, lambda_var):
+            X = np.ravel(x_)
+            return self.interp_f_ratio(X) * self.Lambda_b / lambda_var
         
-        # t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
+        # try:
+        # t_lab_Lb = np.array([100, 250])
+        t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
         # degrees_Lb = np.array([30, 60, 90, 120, 150])
-        # # t_lab_Lb = np.array([96, 143, 200, 300])
-        # # degrees_Lb = np.array([60, 120])
-        # X_Lb = gm.cartesian(t_lab_Lb, degrees_Lb)
-        # print(X_Lb)
-        # Lb_colors = self.colors[-2:]
-        # # print(self.light_colors)
-        # print(Lb_colors)
-        # Lambda_b_array = np.arange(1, 1501, 1)
+        degrees_Lb = np.array([26, 51, 77, 103, 129, 154])
+        # t_lab_Lb = np.array([96, 143, 200, 300])
+        # degrees_Lb = np.array([60, 120])
+        X_Lb = gm.cartesian(t_lab_Lb, degrees_Lb)
+        print(X_Lb)
+        Lb_colors = self.light_colors[-2:]
+        # print(self.light_colors)
+        print(Lb_colors)
+        Lambda_b_array = np.arange(1, 1501, 1)
         
-        # # scale invariant: df = 0
-        # Lb_model = gm.TruncationPointwise(df = 0, excluded = [0])
+        # scale invariant: df = 0
+        Lb_model = gm.TruncationPointwise(df = 0, excluded = [0])
         
-        # ratios_sgt_Lb = [Q_approx(E_to_p(t_lab_Lb, "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
-        # ratios_dsg_Lb = [Q_approx(E_to_p(X_Lb[:, 0], "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
-        # print(np.shape(ratios_sgt_Lb))
-        # print(np.shape(ratios_dsg_Lb))
-        # print(X_Lb[:, 0])
-        # logprior = Lb_logprior(Lambda_b_array)
+        ratios_sgt_Lb = [Q_approx(E_to_p(t_lab_Lb, "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
+        ratios_dsg_Lb = [Q_approx(E_to_p(X_Lb[:, 0], "np"), self.Q_param, Lb, interaction='np') for Lb in Lambda_b_array]
+        print("sgt ratios has shape " + str(np.shape(ratios_sgt_Lb)))
+        print(np.shape(ratios_dsg_Lb))
+        print(X_Lb[:, 0])
+        logprior = Lb_logprior(Lambda_b_array)
         
-        # print(self.nn_orders_mask)
-        # print(self.mask_restricted)
-        # print(self.raw_data_mask)
-        # print(self.nn_orders)
-        # print(self.nn_orders_full)
-        # print(self.nn_orders_full[self.nn_orders_mask])
-        # print((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted])
+        print(self.nn_orders_mask)
+        print(self.mask_restricted)
+        print(self.raw_data_mask)
+        print(self.nn_orders)
+        print(self.nn_orders_full)
+        print(self.nn_orders_full[self.nn_orders_mask])
+        print((self.nn_orders_full[self.nn_orders_mask])[self.mask_restricted])
        
         
-        # # Mask unused SGT data, and compute results
-        # print(SGT.shape)
-        # print(SGT[self.nn_orders_mask, :].shape)
-        # print((SGT[self.nn_orders_mask, :])[self.mask_restricted, :].shape)
-        # sgt_Lb = (SGT[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)]
-        # sgt_Lb_nho_result = compute_posterior_intervals(
-        #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
-        #     orders = self.nn_orders, 
-        #     max_idx = max(self.nn_orders) - 2,
-        #     logprior=logprior, Lb=Lambda_b_array)
-        # sgt_Lb_ho_result = compute_posterior_intervals(
-        #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
-        #     orders = self.nn_orders, 
-        #     max_idx = max(self.nn_orders) - 1,
-        #     logprior = logprior, Lb = Lambda_b_array)
+        # Mask unused SGT data, and compute results
+        print(SGT.shape)
+        print(SGT[self.nn_orders_mask, :].shape)
+        print((SGT[self.nn_orders_mask, :])[self.mask_restricted, :].shape)
+        sgt_Lb = (SGT[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)]
+        sgt_Lb_nho_result = compute_posterior_intervals(
+            Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+            orders = self.nn_orders, 
+            max_idx = max(self.nn_orders) - 2,
+            logprior=logprior, Lb=Lambda_b_array)
+        sgt_Lb_ho_result = compute_posterior_intervals(
+            Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+            orders = self.nn_orders, 
+            max_idx = max(self.nn_orders) - 1,
+            logprior = logprior, Lb = Lambda_b_array)
         
-        # # Mask unused DSG data, and compute results
-        # dsg_Lb = np.reshape((DSG[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
-        # print("dsg_Lb = " + str(dsg_Lb))
-        # dsg_Lb_nho_result = compute_posterior_intervals(
-        #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
-        #     orders = self.nn_orders, 
-        #     max_idx = max(self.nn_orders) - 2,
-        #     logprior = logprior, Lb = Lambda_b_array)
-        # dsg_Lb_ho_result = compute_posterior_intervals(
-        #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
-        #     orders = self.nn_orders, 
-        #     max_idx = max(self.nn_orders) - 1,
-        #     logprior = logprior, Lb = Lambda_b_array)
+        # Mask unused DSG data, and compute results
+        dsg_Lb = np.reshape((DSG[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+        print("dsg_Lb = " + str(dsg_Lb))
+        dsg_Lb_nho_result = compute_posterior_intervals(
+            Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+            orders = self.nn_orders, 
+            max_idx = max(self.nn_orders) - 2,
+            logprior = logprior, Lb = Lambda_b_array)
+        dsg_Lb_ho_result = compute_posterior_intervals(
+            Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+            orders = self.nn_orders, 
+            max_idx = max(self.nn_orders) - 1,
+            logprior = logprior, Lb = Lambda_b_array)
         
-        # # Concatenate all spin observable data into one long vector, and compute results
-        # spins_Lb = np.concatenate([
-        #     np.reshape((spin[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
-        #     for spin in [AY, D, A, AXX, AYY]],
-        #     axis=1)
-        # ratios_spins_Lb = np.concatenate([ratios_dsg_Lb for i in [AY, D, A, AXX, AYY]], axis=1)
-        # spins_Lb_nho_result = compute_posterior_intervals(
-        #     Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
-        #     orders = self.nn_orders, 
-        #     max_idx = max(self.nn_orders) - 2,
-        #     logprior = logprior, Lb = Lambda_b_array)
-        # spins_Lb_ho_result = compute_posterior_intervals(
-        #     Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
-        #     orders = self.nn_orders, 
-        #     max_idx = max(self.nn_orders) - 1,
-        #     logprior = logprior, Lb = Lambda_b_array)
+        # Concatenate all spin observable data into one long vector, and compute results
+        spins_Lb = np.concatenate([
+            np.reshape((spin[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+            for spin in [AY, D, A, AXX, AYY]],
+            axis=1)
+        ratios_spins_Lb = np.concatenate([ratios_dsg_Lb for i in [AY, D, A, AXX, AYY]], axis=1)
+        spins_Lb_nho_result = compute_posterior_intervals(
+            Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
+            orders = self.nn_orders, 
+            max_idx = max(self.nn_orders) - 2,
+            logprior = logprior, Lb = Lambda_b_array)
+        spins_Lb_ho_result = compute_posterior_intervals(
+            Lb_model, spins_Lb, ratios_spins_Lb, ref = 1, 
+            orders = self.nn_orders, 
+            max_idx = max(self.nn_orders) - 1,
+            logprior = logprior, Lb = Lambda_b_array)
         
-        # # Gather the above results
-        # results = [
-        #     sgt_Lb_nho_result, sgt_Lb_ho_result,
-        #     dsg_Lb_nho_result, dsg_Lb_ho_result,
-        #     spins_Lb_nho_result, spins_Lb_ho_result
-        # ]
-        # # results = [dsg_Lb_n4lo_result]
+        # Gather the above results
+        results = [
+            sgt_Lb_nho_result, sgt_Lb_ho_result,
+            dsg_Lb_nho_result, dsg_Lb_ho_result,
+            spins_Lb_nho_result, spins_Lb_ho_result
+        ]
+        # results = [dsg_Lb_n4lo_result]
         
-        # # Plot each posterior and its summary statistics
-        # fig, ax = plt.subplots(1, 1, figsize=(3.4, 3.4))
-        # for i, (posterior, bounds, median) in enumerate(results):
-        #     posterior = posterior / (1.2*np.max(posterior))  # Scale so they're all the same height
-        #     # Make the lines taper off
-        #     Lb_vals = Lambda_b_array[posterior > 1e-2]
-        #     posterior = posterior[posterior > 1e-2]
-        #     # Plot and fill posterior, and add summary statistics
-        #     ax.plot(Lb_vals, posterior-i, c='darkgrey')
-        #     ax.fill_between(Lb_vals, -i, posterior-i, facecolor=Lb_colors[i % 2])
-        #     draw_summary_statistics(*bounds, median, ax=ax, height=-i)
+        # Plot each posterior and its summary statistics
+        fig, ax = plt.subplots(1, 1, figsize=(3.4, 3.4))
+        for i, (posterior, bounds, median) in enumerate(results):
+            posterior = posterior / (1.2*np.max(posterior))  # Scale so they're all the same height
+            # Make the lines taper off
+            Lb_vals = Lambda_b_array[posterior > 1e-2]
+            posterior = posterior[posterior > 1e-2]
+            # Plot and fill posterior, and add summary statistics
+            
+            ax.plot(Lb_vals, posterior-i, c='gray')
+            
+            if i == 0:
+                if len(self.nn_orders) == 6:
+                    pdf_label = r'N$^{4}$LO'
+                if len(self.nn_orders) == 5:
+                    pdf_label = r'N$^{3}$LO'
+                if len(self.nn_orders) == 4:
+                    pdf_label = r'N$^{2}$LO'
+                if len(self.nn_orders) == 3:
+                    pdf_label = r'NLO'
+            elif i == 1:
+                if len(self.nn_orders) == 6:
+                    pdf_label = r'N$^{4}$LO+'
+                if len(self.nn_orders) == 5:
+                    pdf_label = r'N$^{4}$LO'
+                if len(self.nn_orders) == 4:
+                    pdf_label = r'N$^{3}$LO'
+                if len(self.nn_orders) == 3:
+                    pdf_label = r'N$^{2}$LO'
+            else:
+                pdf_label = '_nolegend_'
+                
+            ax.fill_between(Lb_vals, -i, posterior-i, facecolor=Lb_colors[i % 2], 
+                            label = pdf_label, edgecolor = 'gray')
+            draw_summary_statistics(*bounds, median, ax=ax, height=-i)
         
-        # # Plot formatting
-        # ax.set_yticks([-0, -2, -4])
-        # ax.set_yticks([-1.1, -3.1], minor=True)
-        # ax.set_yticklabels([r'$\sigma$', r'$\displaystyle\frac{d\sigma}{d\Omega}$', r'$X_{pqik}$'])
-        # ax.tick_params(axis='both', which='both', direction='in')
-        # ax.tick_params(which='major', length=0)
-        # ax.tick_params(which='minor', length=7, right=True)
-        # ax.set_xlim(0, 1200)
-        # ax.set_xticks([0, 300, 600, 900, 1200])
-        # ax.set_xlabel(r'$\Lambda_b$ (MeV)')
-        # ax.grid(axis='x')
-        # ax.set_axisbelow(True)
+        # Plot formatting
+        ax.set_yticks([-0, -2, -4])
+        ax.set_yticks([-1.1, -3.1], minor=True)
+        ax.set_yticklabels([r'$\sigma$', r'$\displaystyle\frac{d\sigma}{d\Omega}$', r'$X_{pqik}$'])
+        ax.tick_params(axis='both', which='both', direction='in')
+        ax.tick_params(which='major', length=0)
+        ax.tick_params(which='minor', length=7, right=True)
+        ax.set_xlim(0, 1200)
+        ax.set_xticks([0, 300, 600, 900, 1200])
+        ax.set_xlabel(r'$\Lambda_b$ (MeV)')
+        ax.legend(title = r'$\mathrm{pr}(\Lambda_{b} \, | \, \vec{\mathbf{y}}_{k}, \mathbf{f})$')
+        ax.grid(axis='x')
+        ax.set_axisbelow(True)
+        
+        if 'fig' in locals() and whether_save:
+            fig.tight_layout()
+    
+            fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    'Lambdab_posterior_pdf_pointwise' + '_' + self.scheme + '_' + 
+                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                    self.train_pts_loc + '_' + self.p_param + 
+                    self.filename_addendum).replace('_0MeVlab_', '_'))
+        
+        # except:
+        #     print("Error in plotting the pointwise posterior PDF.")
+
+    def PlotLambdaPosteriorCurvewise(self, SGT, DSG, AY, A, D, AXX, AYY, t_lab, degrees, 
+                        ax = None, whether_save = True):
         
         # functions for interpolating the ratio and reference scale in the TruncationGP
         # def lambda_interp_f_ref(x_):
@@ -1673,20 +1731,21 @@ class GSUMDiagnostics:
         # interp_f_ratio_Lb_degrees = interp1d(-1. * np.cos(np.radians(degrees)),
         #         Q_approx(E_to_p(t_lab_prime_loop, "np"), self.Q_param, self.Lambda_b, interaction='np') * len(degrees))
         
-        
         # try:
         # t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
-        t_lab_Lb = np.array([50, 100])
+        # t_lab_Lb = np.array([100, 250])
+        t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
         t_lab_Lb_prime = E_to_p(t_lab_Lb, "np")
-        # degrees_Lb = np.array([30, 60, 90, 120, 150])
+        # degrees_Lb = np.array([60, 120])
         degrees_Lb = np.array([26, 51, 77, 103, 129, 154])
+        # degrees_Lb = np.array([30, 60, 90, 120, 150])
         degrees_Lb_prime = -1. * np.cos(np.radians(degrees_Lb))
         # t_lab_Lb = np.array([96, 143, 200, 300])
         # degrees_Lb = np.array([60, 120])
         X_Lb = gm.cartesian(t_lab_Lb, degrees_Lb)
         X_Lb_prime = gm.cartesian(t_lab_Lb_prime, degrees_Lb_prime)
         print(X_Lb_prime)
-        Lb_colors = self.colors[-2:]
+        Lb_colors = self.light_colors[-2:]
         # print(self.light_colors)
         print(Lb_colors)
         # Lambda_b_array = np.arange(1, 1501, 1)
@@ -1700,8 +1759,10 @@ class GSUMDiagnostics:
         # creates the grid over which the posterior PDF will be plotted
         # self.ls_vals = self.posteriorgrid.x_vals
         # self.lambda_vals = self.posteriorgrid.y_vals
-        lambda_vals_Lb = np.arange(301, 1501, 1)
+        lambda_vals_Lb = np.arange(1, 1501, 10)
         ls_vals_Lb = np.arange(0.02, 2.02, 0.02)
+        
+        lambda_logprior = Lb_logprior(lambda_vals_Lb)
         
         # # creates and fits the TruncationGP
         # self.gp_post = gm.TruncationGP(self.kernel, 
@@ -1760,11 +1821,15 @@ class GSUMDiagnostics:
         
         # evaluates the probability across the mesh
         ls_lambda_loglike_nho = np.array([[
-            gp_post_sgt_Lb_nho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
-                                                  **{"lambda_var" : lambda_})
+            gp_post_sgt_Lb_nho.log_marginal_likelihood([ls_,], 
+                    orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                    **{"lambda_var" : lambda_})
                 for ls_ in np.log(ls_vals_Lb)]
                 for lambda_ in lambda_vals_Lb])
 
+        # adds the log prior to the log likelihood
+        ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
+        
         # Makes sure that the values don't get too big or too small
         ls_lambda_like_nho = np.exp(ls_lambda_loglike_nho - np.max(ls_lambda_loglike_nho))
 
@@ -1783,6 +1848,9 @@ class GSUMDiagnostics:
                                                   **{"lambda_var" : lambda_})
                 for ls_ in np.log(ls_vals_Lb)]
                 for lambda_ in lambda_vals_Lb])
+        
+        # adds the log prior to the log likelihood
+        ls_lambda_loglike_ho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_ho)[1], 1) ).T
 
         # Makes sure that the values don't get too big or too small
         ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
@@ -1854,6 +1922,9 @@ class GSUMDiagnostics:
                                                       **{"lambda_var" : lambda_})
                     for ls_ in np.log(ls_vals_Lb)]
                     for lambda_ in lambda_vals_Lb])
+            
+            # adds the log prior to the log likelihood
+            ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
 
             # Makes sure that the values don't get too big or too small
             ls_lambda_like_nho = np.exp(ls_lambda_loglike_nho - np.max(ls_lambda_loglike_nho))
@@ -1873,6 +1944,9 @@ class GSUMDiagnostics:
                                                       **{"lambda_var" : lambda_})
                     for ls_ in np.log(ls_vals_Lb)]
                     for lambda_ in lambda_vals_Lb])
+            
+            # adds the log prior to the log likelihood
+            ls_lambda_loglike_ho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_ho)[1], 1) ).T
 
             # Makes sure that the values don't get too big or too small
             ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
@@ -2062,6 +2136,9 @@ class GSUMDiagnostics:
             gp_fits_spins_ho = [gp_post_ay_Lb_ho, gp_post_a_Lb_ho, 
                         gp_post_d_Lb_ho, gp_post_axx_Lb_ho, gp_post_ayy_Lb_ho]
             
+            spins_ls_lambda_loglike_nho = np.zeros((len(lambda_vals_Lb), len(ls_vals_Lb)))
+            spins_ls_lambda_loglike_ho = np.zeros((len(lambda_vals_Lb), len(ls_vals_Lb)))
+            
             for gp_fit_spins in gp_fits_spins_nho:
                 # evaluates the probability across the mesh
                 ls_lambda_loglike_nho = np.array([[
@@ -2069,19 +2146,24 @@ class GSUMDiagnostics:
                                                           **{"lambda_var" : lambda_})
                         for ls_ in np.log(ls_vals_Lb)]
                         for lambda_ in lambda_vals_Lb])
+                
+                spins_ls_lambda_loglike_nho += ls_lambda_loglike_nho
+            
+            # adds the log prior to the log likelihood
+            ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
     
-                # Makes sure that the values don't get too big or too small
-                ls_lambda_like_nho = np.exp(ls_lambda_loglike_nho - np.max(ls_lambda_loglike_nho))
-        
-                # Now compute the marginal distributions
-                lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
-                # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
-        
-                # Normalize them
-                lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
-                # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
-        
-                spins_Lb_nho_result += lambda_like_nho
+            # Makes sure that the values don't get too big or too small
+            ls_lambda_like_nho = np.exp(spins_ls_lambda_loglike_nho - np.max(spins_ls_lambda_loglike_nho))
+    
+            # Now compute the marginal distributions
+            lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
+            # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+    
+            # Normalize them
+            lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
+            # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+    
+            spins_Lb_nho_result = lambda_like_nho
             
             for gp_fit_spins in gp_fits_spins_ho:
                 # evaluates the probability across the mesh
@@ -2090,19 +2172,24 @@ class GSUMDiagnostics:
                                                           **{"lambda_var" : lambda_})
                         for ls_ in np.log(ls_vals_Lb)]
                         for lambda_ in lambda_vals_Lb])
+                
+                spins_ls_lambda_loglike_ho += ls_lambda_loglike_ho
+            
+            # adds the log prior to the log likelihood
+            ls_lambda_loglike_ho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_ho)[1], 1) ).T
     
-                # Makes sure that the values don't get too big or too small
-                ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
-        
-                # Now compute the marginal distributions
-                lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
-                # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
-        
-                # Normalize them
-                lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
-                # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
-        
-                spins_Lb_ho_result += lambda_like_ho
+            # Makes sure that the values don't get too big or too small
+            ls_lambda_like_ho = np.exp(spins_ls_lambda_loglike_ho - np.max(spins_ls_lambda_loglike_ho))
+    
+            # Now compute the marginal distributions
+            lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
+            # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+    
+            # Normalize them
+            lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
+            # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+    
+            spins_Lb_ho_result = lambda_like_ho
         
         # Normalize them
         dsg_Lb_ho_result /= np.trapz(dsg_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
@@ -2121,15 +2208,49 @@ class GSUMDiagnostics:
         # Plot each posterior and its summary statistics
         fig, ax = plt.subplots(1, 1, figsize=(3.4, 3.4))
         # for i, (posterior, bounds, median) in enumerate(results):
-        for i, posterior in enumerate(results):
-            posterior = posterior / (1.2*np.max(posterior))  # Scale so they're all the same height
+        for i, posterior_raw in enumerate(results):
+            posterior = posterior_raw / (1.2*np.max(posterior_raw))  # Scale so they're all the same height
             # Make the lines taper off
             Lb_vals = lambda_vals_Lb[posterior > 1e-2]
             posterior = posterior[posterior > 1e-2]
             # Plot and fill posterior, and add summary statistics
-            ax.plot(Lb_vals, posterior-i, c='darkgrey')
-            ax.fill_between(Lb_vals, -i, posterior-i, facecolor=Lb_colors[i % 2])
+            ax.plot(Lb_vals, posterior-i, c='gray')
+            
+            if i == 0:
+                if len(self.nn_orders) == 6:
+                    pdf_label = r'N$^{4}$LO'
+                if len(self.nn_orders) == 5:
+                    pdf_label = r'N$^{3}$LO'
+                if len(self.nn_orders) == 4:
+                    pdf_label = r'N$^{2}$LO'
+                if len(self.nn_orders) == 3:
+                    pdf_label = r'NLO'
+            elif i == 1:
+                if len(self.nn_orders) == 6:
+                    pdf_label = r'N$^{4}$LO+'
+                if len(self.nn_orders) == 5:
+                    pdf_label = r'N$^{4}$LO'
+                if len(self.nn_orders) == 4:
+                    pdf_label = r'N$^{3}$LO'
+                if len(self.nn_orders) == 3:
+                    pdf_label = r'N$^{2}$LO'
+            else:
+                pdf_label = '_nolegend_'
+                
+            ax.fill_between(Lb_vals, -i, posterior-i, facecolor=Lb_colors[i % 2], 
+                            label = pdf_label, edgecolor = 'gray')
             # draw_summary_statistics(*bounds, median, ax=ax, height=-i)
+            
+            bounds = np.zeros((2,2))
+            for j, p in enumerate([0.68, 0.95]):
+                # bounds[i] = gm.hpd_pdf(pdf=posterior, alpha=p, x=Lb, disp=False)
+                bounds[j] = gm.hpd_pdf(pdf=posterior_raw, alpha=p, x=lambda_vals_Lb)
+                # bounds[j] = gm.hpd_pdf(pdf=posterior, alpha=p, x=Lb_vals)
+
+            median = gm.median_pdf(pdf=posterior_raw, x=lambda_vals_Lb)
+            # median = gm.median_pdf(pdf=posterior, x=Lb_vals)
+
+            draw_summary_statistics(*bounds, median, ax=ax, height=-i)
         
         # Plot formatting
         ax.set_yticks([-0, -2, -4])
@@ -2141,11 +2262,22 @@ class GSUMDiagnostics:
         ax.set_xlim(0, 1200)
         ax.set_xticks([0, 300, 600, 900, 1200])
         ax.set_xlabel(r'$\Lambda_b$ (MeV)')
+        ax.legend(title = r'$\mathrm{pr}(\Lambda_{b} \, | \, \vec{\mathbf{y}}_{k}, \ell, \mathbf{f})$')
         ax.grid(axis='x')
         ax.set_axisbelow(True)
         
+        if 'fig' in locals() and whether_save:
+            fig.tight_layout()
+    
+            fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    'Lambdab_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                    self.train_pts_loc + '_' + self.p_param + 
+                    self.filename_addendum).replace('_0MeVlab_', '_'))
+        
         # except:
-        #     print("Error in plotting the posterior PDF.")
+        #     print("Error in plotting the curvewise posterior PDF.")
 
     def Plotzilla(self, whether_save = True):
         """
