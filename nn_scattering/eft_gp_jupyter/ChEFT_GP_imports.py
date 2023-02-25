@@ -2,6 +2,7 @@ import gsum as gm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.text import Text
 import numpy as np
 import scipy.stats as stats
 from scipy.interpolate import interp1d
@@ -14,6 +15,8 @@ import urllib
 import tables
 import pandas
 import seaborn
+import itertools
+import ray
 # See: https://ianstormtaylor.com/design-tip-never-use-black/
 # softblack = '#262626'
 softblack = 'k'  # Looks better when printed on tex file
@@ -63,6 +66,81 @@ m_p = 938.27208  # MeV/c^2
 m_n = 939.56541  # MeV/c^2
 hbarc = 197.33  # Mev-fm
 
+def correlation_coefficient(x, y, pdf):
+    # normalizes the pdf
+    pdf /= np.trapz(np.trapz(pdf, x = y, axis = 0), x = x, axis = 0)
+    print("pdf = " + str(pdf))
+    
+    # finds the maximum value
+    pdf_max = np.amax(pdf)
+    print("pdf_max = " + str(pdf_max))
+    
+    # figures out the x and y coordinates of the max
+    print(np.argwhere(pdf == pdf_max))
+    x_max = x[np.argwhere(pdf == pdf_max)[0, 1]]
+    print("x_max = " + str(x_max))
+    y_max = y[np.argwhere(pdf == pdf_max)[0, 0]]
+    print("y_max = " + str(y_max))
+    
+    # finds variance in x and y
+    sigma_x_sq = np.trapz(
+                np.trapz(np.tile((x - x_max)**2, (len(y), 1)) * pdf, 
+                         x = x, axis = 1), 
+                x = y, axis = 0)
+    print("sigma_x_sq = " + str(sigma_x_sq))
+#     sigma_x_sq = np.trapz(pdf @ (x - x_max)**2, x = y, axis = 0)
+#     print("sigma_x_sq = " + str(sigma_x_sq))
+    sigma_y_sq = np.trapz(
+                np.trapz(np.tile(np.reshape((y - y_max)**2, (len(y), 1)), (1, len(x))) * pdf, 
+                         x = y, axis = 0), 
+                x = x, axis = 0)
+#     print("sigma_y_sq = " + str(sigma_y_sq))
+#     sigma_y_sq = np.trapz((y - y_max)**2 @ pdf, x = x, axis = 0)
+    print("sigma_y_sq = " + str(sigma_y_sq))
+    
+    # finds sigmaxy
+    sigma_xy_sq = np.trapz(
+                np.trapz(np.tile(np.reshape(y - y_max, (len(y), 1)), (1, len(x))) * \
+                             np.tile(x - x_max, (len(y), 1)) * pdf, 
+                         x = x, axis = 1), 
+                x = y, axis = 0)
+    print("sigma_xy_sq = " + str(sigma_xy_sq))
+#     sigma_xy_sq = (y - y_max) @ pdf @ (x - x_max)
+#     print("sigma_xy_sq = " + str(sigma_xy_sq))
+    
+    # finds C
+    print(np.linalg.inv(-1. * np.array([[sigma_x_sq, sigma_xy_sq], 
+                                      [sigma_xy_sq, sigma_y_sq]])))
+    C = np.linalg.inv(-1. * np.array([[sigma_x_sq, sigma_xy_sq], 
+                                      [sigma_xy_sq, sigma_y_sq]]))[0, 1]
+    print(C)
+    
+    return C
+
+def mean_and_stddev(x, pdf):
+    # normalizes the pdf
+    pdf /= np.trapz(pdf, x = x, axis = 0)
+    print("pdf = " + str(pdf))
+    
+    # finds the maximum value
+    pdf_max = np.amax(pdf)
+    print("pdf_max = " + str(pdf_max))
+    
+    # figures out the x coordinate of the max
+    print(np.argwhere(pdf == pdf_max))
+    x_max = x[np.argwhere(pdf == pdf_max)][0]
+    print("x_max = " + str(x_max))
+    
+    # finds the mean
+    mean = np.trapz(x * pdf, x = x, axis = 0)
+    print("mean = " + str(mean))
+    
+    # finds the standard deviation
+    sigma_x = np.sqrt(np.trapz((x - x_max)**2 * pdf, x = x, axis = 0))
+    print("sigma_x = " + str(sigma_x))
+    
+    return mean, sigma_x
+
 def joint_plot(ratio = 1, height = 3):
     """Taken from Seaborn JointGrid"""
     fig = plt.figure(figsize=(height, height))
@@ -108,43 +186,66 @@ def corner_plot(n_plots = 3, height = 9):
     fig = plt.figure(figsize=(height, height))
     gsp = plt.GridSpec(n_plots, n_plots)
 
-    ax_joint_array = np.reshape(
-                    [[fig.add_subplot(gsp[n_plots * i + j]) 
-                      for j in range(1, i + 1)]
-                      for i in range(1, n_plots)], 
-                (n_plots * (n_plots + 1) / 2))
-    ax_marg_array = np.reshape(
-                    [fig.add_subplot(gsp[1 + i * (n_plots + 1)]) for i in range(0, n_plots)], 
-                (n_plots))
-
-    # # Turn off tick visibility for the measure axis on the marginal plots
-    # plt.setp(ax_marg_x.get_xticklabels(), visible=False)
-    # plt.setp(ax_marg_y.get_yticklabels(), visible=False)
-
-    # # Turn off the ticks on the density axis for the marginal plots
-    # plt.setp(ax_marg_x.yaxis.get_majorticklines(), visible=False)
-    # plt.setp(ax_marg_x.yaxis.get_minorticklines(), visible=False)
-    # plt.setp(ax_marg_y.xaxis.get_majorticklines(), visible=False)
-    # plt.setp(ax_marg_y.xaxis.get_minorticklines(), visible=False)
-    # plt.setp(ax_marg_x.get_yticklabels(), visible=False)
-    # plt.setp(ax_marg_y.get_xticklabels(), visible=False)
-    # ax_marg_x.yaxis.grid(False)
-    # ax_marg_y.xaxis.grid(False)
-
-    # # Make the grid look nice
-    # from seaborn import utils
-    # # utils.despine(fig)
-    # utils.despine(ax=ax_marg_x, left=True)
-    # utils.despine(ax=ax_marg_y, bottom=True)
-    # fig.tight_layout(h_pad=0, w_pad=0)
+#     ax_joint_array_unshaped = [[fig.add_subplot(gsp[n_plots * i + j - 1]) 
+#                       for j in range(1, i + 1)]
+#                       for i in range(1, n_plots)]
+#     print(ax_joint_array_unshaped)
+#     print(fig.axes)
+#     ax_joint_array_iter = list(itertools.chain.from_iterable(ax_joint_array_unshaped))
+#     print(ax_joint_array_iter)
+#     ax_joint_array = np.reshape(ax_joint_array_iter, 
+#                 int(n_plots * (n_plots - 1) / 2))
+#     print(ax_joint_array)
+#     print("ax_joint_array has shape " + str(np.shape(ax_joint_array)))
     
-    # ax_marg_y.tick_params(axis='y', which='major', direction='out')
-    # ax_marg_x.tick_params(axis='x', which='major', direction='out')
-    # ax_marg_y.tick_params(axis='y', which='minor', direction='out')
-    # ax_marg_x.tick_params(axis='x', which='minor', direction='out')
-    # ax_marg_y.margins(x=0.1, y=0.)
-
-    # fig.subplots_adjust(hspace=0, wspace=0)
+    for i in range(1, n_plots):
+        for j in range(1, i + 1):
+            if ((n_plots * i + j - 1) % n_plots != 0) and ((n_plots * i + j - 1) < (n_plots * (n_plots - 1))):
+                print(n_plots * i + j - 1)
+                fig.add_subplot(gsp[n_plots * i + j - 1], 
+                                xticklabels = [], 
+                                yticklabels = [])
+            elif (n_plots * i + j - 1) % n_plots != 0:
+                print(n_plots * i + j - 1)
+                fig.add_subplot(gsp[n_plots * i + j - 1], 
+                                yticklabels = [])
+            elif (n_plots * i + j - 1) < (n_plots * (n_plots - 1)):
+                print(n_plots * i + j - 1)
+                fig.add_subplot(gsp[n_plots * i + j - 1], 
+                                xticklabels = [])
+            else:
+                print(n_plots * i + j - 1)
+                print("I have both sets of labels.")
+                fig.add_subplot(gsp[n_plots * i + j - 1])
+    print(fig.axes)
+    ax_joint_array = np.reshape(fig.axes, 
+                int(n_plots * (n_plots - 1) / 2))
+    print(ax_joint_array)
+    print("ax_joint_array has shape " + str(np.shape(ax_joint_array)))
+    print(ax_joint_array[-1].get_yticklabels())
+    print(ax_joint_array[-2].get_yticklabels())
+    print(ax_joint_array[-3].get_yticklabels())
+    print("\n")
+    print(ax_joint_array[-1].get_xticklabels())
+    print(ax_joint_array[-2].get_xticklabels())
+    print(ax_joint_array[-3].get_xticklabels())
+    ax_marg_array = np.reshape(
+                    [fig.add_subplot(gsp[i * (n_plots + 1)],
+                            yticklabels = [], yticks = [], 
+                            xticklabels = []) 
+                     for i in range(0, n_plots)], 
+                (n_plots))
+    
+    ax_marg_array[-1].set_xticks(ax_joint_array[-n_plots].get_yticks())
+    rotated_ticklabels = []
+    for text in ax_joint_array[-n_plots].get_yticklabels():
+        Y = text._y
+        rotated_ticklabels.append(Text(x = Y, y = 0.0, text = str(Y)))
+    print(rotated_ticklabels)
+    ax_marg_array[-1].set_xticklabels(rotated_ticklabels)
+    print((i * (n_plots + 1) == n_plots**2 - 1))
+    print(fig.axes)
+    print("ax_marg_array has shape " + str(np.shape(ax_marg_array)))
     
     return fig, ax_joint_array, ax_marg_array
 
@@ -2355,6 +2456,23 @@ class GSUMDiagnostics:
             return (interp1d( x_interp, Q_approx(x_interp_Q, Q_param, Lambda_b = lambda_var, m_pi = mpi_var) 
                              * np.ones(len(x_interp)) ))(X)
         
+        # ray.init()
+        
+        # @ray.remote
+        # def log_likelihood(gp_fitted, orders, mpi_mesh, ls_mesh, lambdab_mesh, 
+        #                    x_interp, x_interp_Q):
+        #     return np.array([[[
+        #         gp_fitted.log_marginal_likelihood([ls_,], 
+        #                 orders_eval = orders,
+        #                 **{"x_interp" : x_interp,
+        #                    "x_interp_Q" : x_interp_Q, 
+        #                     "Q_param" : self.Q_param, 
+        #                     "mpi_var" : mpi_, 
+        #                     "lambda_var" : lambda_})
+        #             for mpi_ in mpi_mesh]
+        #             for ls_ in np.log(ls_mesh)]
+        #             for lambda_ in lambdab_mesh])
+        
         # try:
         # t_lab_Lb = np.array([50, 100, 150, 200, 250, 300])
         # t_lab_Lb = np.array([100, 250])
@@ -2385,11 +2503,12 @@ class GSUMDiagnostics:
         # self.ls_vals = self.posteriorgrid.x_vals
         # self.lambda_vals = self.posteriorgrid.y_vals
         # lambda_vals = np.linspace(Lambda_b_true / 2.5, Lambda_b_true * 2.5, 51)
-        mpi_vals = np.linspace(mpi_true / 3.1, mpi_true * 3.1, 29)
-        ls_vals = np.linspace(0.02, 2.00, 30)
+        mpi_vals = np.linspace(mpi_true / 3.1, mpi_true * 3.1, 24)
+        ls_vals = np.linspace(0.02, 2.00, 25)
+        ls_vals_Elab = np.linspace(1, 300, 25)
         # mpi_vals = np.array([131, 133, 135, 137, 139, 141, 143, 145])
         # mpi_vals = np.array([193, 195, 197, 199, 201, 203, 205, 207])
-        lambda_vals = np.linspace(np.max(mpi_vals), 1500, 31)
+        lambda_vals = np.linspace(np.max(mpi_vals), 1500, 26)
         # lambda_vals = np.linspace(590, 650, 10)
         
         lambda_logprior = Lb_logprior(lambda_vals)
@@ -2467,13 +2586,21 @@ class GSUMDiagnostics:
             gp_post_sgt_Lb_nho.log_marginal_likelihood([ls_,], 
                     orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
                     **{"x_interp" : E_to_p(t_lab, "np"),
-                       "x_interp_Q" : E_to_p(t_lab, "np"), 
+                        "x_interp_Q" : E_to_p(t_lab, "np"), 
                         "Q_param" : self.Q_param, 
                         "mpi_var" : mpi_, 
                         "lambda_var" : lambda_})
                 for mpi_ in mpi_vals]
-                for ls_ in np.log(ls_vals)]
+                for ls_ in np.log(ls_vals_Elab)]
                 for lambda_ in lambda_vals])
+        # gp_post_ray = ray.put(gp_post_sgt_Lb_nho)
+        # orders_nho_ray = ray.put(self.nn_orders[:len(self.nn_orders) - 1])
+        # t_lab_mom_ray = ray.put(E_to_p(t_lab, "np"))
+        
+        # sgt_loglike_nho = log_likelihood(gp_post_ray, 
+        #                 orders_nho_ray, 
+        #                 mpi_vals, ls_vals, lambda_vals, 
+        #                 t_lab_mom_ray, t_lab_mom_ray)
 
         # # # adds the log prior to the log likelihood
         # # ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
@@ -2576,7 +2703,7 @@ class GSUMDiagnostics:
                         "mpi_var" : mpi_, 
                         "lambda_var" : lambda_})
                 for mpi_ in mpi_vals]
-                for ls_ in np.log(ls_vals)]
+                for ls_ in np.log(ls_vals_Elab)]
                 for lambda_ in lambda_vals])
 
         # # # adds the log prior to the log likelihood
@@ -2876,21 +3003,21 @@ class GSUMDiagnostics:
         # Now compute the marginal distributions
         sgt_lambda_post_nho = np.trapz(
             np.trapz(like_list[0], x = mpi_vals, axis = 2), 
-                x = ls_vals, axis = 1)
+                x = ls_vals_Elab, axis = 1)
         sgt_ls_post_nho = np.trapz(
             np.trapz(like_list[0], x = mpi_vals, axis = 2), 
                 x = lambda_vals, axis = 0)
         sgt_mpi_post_nho = np.trapz(
-            np.trapz(like_list[0], x = ls_vals, axis = 1), 
+            np.trapz(like_list[0], x = ls_vals_Elab, axis = 1), 
                 x = lambda_vals, axis = 0)
         sgt_lambda_post_ho = np.trapz(
             np.trapz(like_list[1], x = mpi_vals, axis = 2), 
-                x = ls_vals, axis = 1)
+                x = ls_vals_Elab, axis = 1)
         sgt_ls_post_ho = np.trapz(
             np.trapz(like_list[1], x = mpi_vals, axis = 2), 
                 x = lambda_vals, axis = 0)
         sgt_mpi_post_ho = np.trapz(
-            np.trapz(like_list[1], x = ls_vals, axis = 1), 
+            np.trapz(like_list[1], x = ls_vals_Elab, axis = 1), 
                 x = lambda_vals, axis = 0)
         
         dsg_lambda_post_nho = np.trapz(
@@ -2933,10 +3060,10 @@ class GSUMDiagnostics:
     
         # Normalize them
         sgt_lambda_post_nho /= np.trapz(sgt_lambda_post_nho, x = lambda_vals, axis = 0)
-        sgt_ls_post_nho /= np.trapz(sgt_ls_post_nho, x = ls_vals, axis = 0)
+        sgt_ls_post_nho /= np.trapz(sgt_ls_post_nho, x = ls_vals_Elab, axis = 0)
         sgt_mpi_post_nho /= np.trapz(sgt_mpi_post_nho, x = mpi_vals, axis = 0)
         sgt_lambda_post_ho /= np.trapz(sgt_lambda_post_ho, x = lambda_vals, axis = 0)
-        sgt_ls_post_ho /= np.trapz(sgt_ls_post_ho, x = ls_vals, axis = 0)
+        sgt_ls_post_ho /= np.trapz(sgt_ls_post_ho, x = ls_vals_Elab, axis = 0)
         sgt_mpi_post_ho /= np.trapz(sgt_mpi_post_ho, x = mpi_vals, axis = 0)
         
         dsg_lambda_post_nho /= np.trapz(dsg_lambda_post_nho, x = lambda_vals, axis = 0)
@@ -3244,15 +3371,21 @@ class GSUMDiagnostics:
         # results_mpi = [sgt_mpi_nho_result, sgt_mpi_ho_result, 
         #                 dsg_mpi_nho_result, dsg_mpi_ho_result, 
         #                 spins_mpi_nho_result, spins_mpi_ho_result]
-        # results_joint_lambdampi = [
-        #                 np.trapz(sgt_lambda_ls_mpi_like_nho, x = ls_vals, axis = 1), 
-        #                 np.trapz(sgt_lambda_ls_mpi_like_ho, x = ls_vals, axis = 1)]
-        # results_joint_lslambda = [
-        #                 np.trapz(sgt_lambda_ls_mpi_like_nho, x = mpi_vals, axis = 2).T, 
-        #                 np.trapz(sgt_lambda_ls_mpi_like_ho, x = mpi_vals, axis = 2).T]
-        # results_joint_lsmpi = [
-        #                 np.trapz(sgt_lambda_ls_mpi_like_nho, x = lambda_vals, axis = 0), 
-        #                 np.trapz(sgt_lambda_ls_mpi_like_ho, x = lambda_vals, axis = 0)]
+        results_joint_lambdampi = [np.trapz(dist, x = ls_vals, axis = 1) for dist in like_list]
+        for dist_idx, dist in enumerate(like_list):
+            if dist_idx == 0 or dist_idx == 1:
+                results_joint_lambdampi[dist_idx] = np.trapz(dist, x = ls_vals_Elab, axis = 1)
+        results_joint_lslambda = [np.trapz(dist, x = mpi_vals, axis = 2).T for dist in like_list]
+        results_joint_lsmpi = [np.trapz(dist, x = lambda_vals, axis = 0) for dist in like_list]
+        
+        # norm_joint_lambdampi = [np.trapz(np.trapz(dist, x = lambda_vals, axis = 0), x = mpi_vals, axis = 0) for dist in results_joint_lambdampi]
+        # norm_joint_lslambda = [np.trapz(np.trapz(dist, x = ls_vals, axis = 0), x = lambda_vals, axis = 0) for dist in results_joint_lslambda]
+        # norm_joint_lsmpi = [np.trapz(np.trapz(dist, x = ls_vals, axis = 0), x = mpi_vals, axis = 0) for dist in results_joint_lsmpi]
+        
+        results_joint_lambdampi = [dist / np.amax(dist) for dist in results_joint_lambdampi]
+        results_joint_lslambda = [dist / np.amax(dist) for dist in results_joint_lslambda]
+        results_joint_lsmpi = [dist / np.amax(dist) for dist in results_joint_lsmpi]
+        
         results_lambda = [sgt_lambda_post_nho, sgt_lambda_post_ho, 
                           dsg_lambda_post_nho, dsg_lambda_post_ho, 
                           spins_lambda_post_nho, spins_lambda_post_ho]
@@ -3369,8 +3502,8 @@ class GSUMDiagnostics:
             ax.tick_params(axis='both', which='both', direction='in')
             ax.tick_params(which='major', length=0)
             ax.tick_params(which='minor', length=7, right=True)
-            ax.set_xlim(50, 300)
-            ax.set_xticks([100, 150, 200, 250, 300, 350])
+            ax.set_xlim(0, 300)
+            ax.set_xticks([50, 100, 150, 200, 250, 300, 350])
             ax.set_xlabel(r'$m_{\pi}$ (MeV)')
             ax.legend(title = r'$\mathrm{pr}(m_{\pi} \, | \, \vec{\mathbf{y}}_{k}, \Lambda_{b}, \ell, \mathbf{f})$', 
                       handles = [Patch(facecolor=Lb_colors[0], 
@@ -3443,81 +3576,101 @@ class GSUMDiagnostics:
     #                             self.train_pts_loc + '_' + self.p_param + 
     #                             self.filename_addendum).replace('_0MeVlab_', '_'))
             
-        #     if whether_plot_corner:
-        #         with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
-        #             cmap_name = 'Blues'
-        #             cmap = mpl.cm.get_cmap(cmap_name)
+            if whether_plot_corner:
+                with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
+                    cmap_name = 'Blues'
+                    cmap = mpl.cm.get_cmap(cmap_name)
                     
-        #             for posterior in zip(results_joint_lambdampi, results_joint_lsmpi,
-        #                                  results_joint_lslambda, results_mpi, 
-        #                                  results_lambda, results_ls):
-        #                 # Setup axes
-        # #                 if ax_joint == None and ax_marg_x == None and ax_marg_y == None:
-        #                 fig, ax_joint_array, ax_marg_array = corner_plot(n_plots = len(posterior) / 2, height=9)
+                    for posterior_idx, posterior in enumerate(zip(results_joint_lambdampi, results_joint_lsmpi,
+                                          results_joint_lslambda, results_mpi, 
+                                          results_lambda, results_ls)):
+                        # Setup axes
+        #                 if ax_joint == None and ax_marg_x == None and ax_marg_y == None:
+                        fig, ax_joint_array, ax_marg_array = corner_plot(n_plots = len(posterior) // 2)
+                        
+                        if posterior_idx == 0 or posterior_idx == 1:
+                            ls_vals_corner = ls_vals_Elab
+                        else:
+                            ls_vals_corner = ls_vals
 
-        #                 # Plot contour
-        #                 ax_joint_array[0].contour(mpi_vals, lambda_vals, posterior[0],
-        #                                   levels=[np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999],
-        #                                   cmap=cmap_name, vmin=-0.05, vmax=0.8, zorder=1)
+                        # Plot contour
+                        ax_joint_array[0].contour(mpi_vals, lambda_vals, posterior[0],
+                                          levels = [np.amax(posterior[0]) * level for level in ([np.exp(-0.2*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
+                                          cmap=cmap_name, vmin=0, vmax=0.8, zorder=1)
+                        corr_coeff = correlation_coefficient(mpi_vals, lambda_vals, posterior[0])
+                        ax_joint_array[0].text(.99, .99, f'C = {corr_coeff:.2f}', 
+                                               ha='right', va='top', 
+                                               transform = ax_joint_array[0].transAxes)
                         
-        #                 ax_joint_array[1].contour(mpi_vals, ls_vals, posterior[1],
-        #                                   levels=[np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999],
-        #                                   cmap=cmap_name, vmin=-0.05, vmax=0.8, zorder=1)
+                        ax_joint_array[1].contour(mpi_vals, ls_vals_corner, posterior[1],
+                                          levels = [np.amax(posterior[1]) * level for level in ([np.exp(-0.2*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])], 
+                                          cmap=cmap_name, vmin=0, vmax=0.8, zorder=1)
                         
-        #                 ax_joint_array[2].contour(lambda_vals, ls_vals, posterior[2],
-        #                                   levels=[np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999],
-        #                                   cmap=cmap_name, vmin=-0.05, vmax=0.8, zorder=1)
+                        ax_joint_array[2].contour(lambda_vals, ls_vals_corner, posterior[2],
+                                          levels = [np.amax(posterior[2]) * level for level in ([np.exp(-0.2*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
+                                          cmap=cmap_name, vmin=0, vmax=0.8, zorder=1)
 
-        #                 # Now plot the marginal distributions
-        #                 ax_marg_array[0].plot(mpi_vals, posterior[4], c=cmap(0.8), lw=1)
-        #                 ax_marg_array[0].fill_between(mpi_vals, np.zeros_like(mpi_vals),
-        #                                         posterior[4], facecolor=cmap(0.2), lw=1)
+                        # Now plot the marginal distributions
+                        ax_marg_array[0].plot(mpi_vals, posterior[3], c=cmap(0.8), lw=1)
+                        ax_marg_array[0].fill_between(mpi_vals, np.zeros_like(mpi_vals),
+                                                posterior[3], facecolor=cmap(0.2), lw=1)
                         
-        #                 ax_marg_array[1].plot(lambda_vals, posterior[5], c=cmap(0.8), lw=1)
-        #                 ax_marg_array[1].fill_between(lambda_vals, np.zeros_like(lambda_vals),
-        #                                         posterior[5], facecolor=cmap(0.2), lw=1)
+                        ax_marg_array[1].plot(lambda_vals, posterior[4], c=cmap(0.8), lw=1)
+                        ax_marg_array[1].fill_between(lambda_vals, np.zeros_like(lambda_vals),
+                                                posterior[4], facecolor=cmap(0.2), lw=1)
                         
-        #                 ax_marg_array[2].plot(ls_vals, posterior[6], c=cmap(0.8), lw=1)
-        #                 ax_marg_array[2].fill_between(ls_vals, np.zeros_like(ls_vals),
-        #                                         posterior[6], facecolor=cmap(0.2), lw=1)
+                        ax_marg_array[2].plot(ls_vals_corner, posterior[5], c=cmap(0.8), lw=1)
+                        ax_marg_array[2].fill_between(ls_vals_corner, np.zeros_like(ls_vals_corner),
+                                                posterior[5], facecolor=cmap(0.2), lw=1)
 
-        #                 # Formatting
-        #                 ax_joint_array[0].set_ylabel(r'$\Lambda_{b}$ (MeV)')
-        #                 ax_joint_array[1].set_xlabel(r'$m_{\pi}$ (MeV)')
-        #                 ax_joint_array[1].set_ylabel(r'$\ell$')
-        #                 ax_joint_array[2].set_xlabel(r'$\Lambda_{b}$ (MeV)')
+                        # Formatting
+                        ax_joint_array[0].set_ylabel(r'$\Lambda_{b}$ (MeV)')
+                        ax_joint_array[1].set_xlabel(r'$m_{\pi}$ (MeV)')
+                        ax_joint_array[1].set_ylabel(r'$\ell$')
+                        ax_joint_array[2].set_xlabel(r'$\Lambda_{b}$ (MeV)')
                         
-        #                 ax_joint_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_joint_array[1].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_joint_array[2].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_marg_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_marg_array[1].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_marg_array[2].axvline(self.ls, 0, 1, c=gray, lw=1, zorder=0)
+                        ax_joint_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
+                        ax_joint_array[1].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
+                        ax_joint_array[2].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
+                        ax_marg_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
+                        ax_marg_array[1].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
                         
-        #                 ax_joint_array[0].axhline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_joint_array[1].axhline(self.ls, 0, 1, c=gray, lw=1, zorder=0)
-        #                 ax_joint_array[2].axhline(self.ls, 0, 1, c=gray, lw=1, zorder=0)
+                        ax_joint_array[0].axhline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
                         
-        #                 # ax_joint.margins(x=0, y=0.)
-        #                 # ax_joint.set_xlim(min(mpi_vals), max(mpi_vals))
-        #                 # ax_joint.set_ylim(min(lambda_vals), max(lambda_vals))
-        #                 # ax_marg_x.set_ylim(bottom=0);
-        #                 # ax_marg_y.set_xlim(left=0);
-        #                 # ax_joint.text(0.95, 0.95, r'pr$(m_{\pi}, \Lambda_{b} \,|\, \vec{\mathbf{y}}_k, \ell)$', ha='right', va='top',
-        #                 #               transform=ax_joint.transAxes,
-        #                 #               bbox=text_bbox
-        #                 #               )
-        #                 plt.show()
+                        # ax_joint.margins(x=0, y=0.)
+                        # ax_joint.set_xlim(min(mpi_vals), max(mpi_vals))
+                        # ax_joint.set_ylim(min(lambda_vals), max(lambda_vals))
+                        # ax_marg_x.set_ylim(bottom=0);
+                        # ax_marg_y.set_xlim(left=0);
+                        # ax_joint.text(0.95, 0.95, r'pr$(m_{\pi}, \Lambda_{b} \,|\, \vec{\mathbf{y}}_k, \ell)$', ha='right', va='top',
+                        #               transform=ax_joint.transAxes,
+                        #               bbox=text_bbox
+                        #               )
+                        plt.show()
                         
-        #                 if 'fig' in locals() and whether_save:
-        #                     fig.tight_layout()
-                    
-        #                     fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-        #                             'joint_Lambdab_mpieff_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-        #                                 self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
-        #                             '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
-        #                             self.train_pts_loc + '_' + self.p_param + 
-        #                             self.filename_addendum).replace('_0MeVlab_', '_'))
+                        if 'fig' in locals() and whether_save:
+                            fig.tight_layout()
+                            if posterior_idx == 0 or posterior_idx == 1:
+                                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                                    'SGT_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                                    self.train_pts_loc + '_' + self.p_param + 
+                                    self.filename_addendum).replace('_0MeVlab_', '_'))
+                            elif posterior_idx == 2 or posterior_idx == 3:
+                                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                                    'DSG_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                                    self.train_pts_loc + '_' + self.p_param + 
+                                    self.filename_addendum).replace('_0MeVlab_', '_'))
+                            elif posterior_idx == 4 or posterior_idx == 5:
+                                fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                                    'spin_observables_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                                        self.scale + '_Q' + self.Q_param + '_' + self.vs_what + 
+                                    '_' + str(self.n_train_pts) + '_' + str(self.n_test_pts) + '_' + 
+                                    self.train_pts_loc + '_' + self.p_param + 
+                                    self.filename_addendum).replace('_0MeVlab_', '_'))
             
             # except:
             #     print("Error in plotting the curvewise posterior PDF.")
