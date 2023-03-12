@@ -14,7 +14,7 @@ import numpy as np
 # import math
 # import re
 import gc
-from ChEFT_GP_imports import (
+from ChEFT_GP_imports_forked import (
     joint_plot,
     offset_xlabel,
     m_p,
@@ -382,7 +382,8 @@ def gp_analysis(
     input_space_input=["cos"],
     train_test_split_array=[Fullspaceanglessplit1],
     orders_input="all",
-    orders_dict=None,
+    orders_names_dict=None,
+    orders_labels_dict=None,
     length_scale_input=LengthScale("1/16-1_fitted", 0.25, 0.25, 4, whether_fit=True),
     fixed_sd=None,
     m_pi_eff=138,
@@ -444,8 +445,8 @@ def gp_analysis(
 
     Q_param_method_array (str list): methods of parametrizing the dimensionless 
         expansion parameter Q for evaluation.
-    Built-in options: "poly", "max", "cos"
-    Default: ["poly"]
+    Built-in options: "smoothmax", "max", "sum"
+    Default: ["smoothmax"]
     
     p_param_method_array (str list): methods of parametrizing the characteristic 
         momentum p in Q(p) for evaluation.
@@ -474,8 +475,13 @@ def gp_analysis(
         [0, 2, 3, 4, 5] for EMN; [0, 2, 3] for GT+.
     Default: "all"
     
-    orders_dict (dict): dictionary method linking the numerical indices (int) 
-        of EFT orders and their corresponding names (str)
+    orders_names_dict (dict): dictionary method linking the numerical indices (int) 
+        of EFT orders and their corresponding abbreviations (str)
+    
+    Default: None
+    
+    orders_labels_dict (dict): dictionary method linking the numerical indices (int) 
+        of EFT orders and their corresponding math-mode-formatted labels (str)
     
     Default: None
 
@@ -795,7 +801,8 @@ def gp_analysis(
                                     ScaleScheme.light_colors,
                                     orders_restricted=orders_input_array,
                                     mask_restricted=mask_orders,
-                                    orders_dict=orders_dict,
+                                    orders_names_dict=orders_names_dict,
+                                    orders_labels_dict = orders_labels_dict,
                                 )
 
                                 # creates the object used to generate and plot statistical diagnostics
@@ -870,6 +877,7 @@ def gp_analysis(
                                         t_lab=t_lab,
                                         degrees=degrees,
                                         Lambda_b_true=Lambdab,
+                                        ls_true = None, 
                                         mpi_true=m_pi_eff,
                                         whether_save=save_lambdapost_curvewise_bool,
                                     )
@@ -987,7 +995,8 @@ def gp_analysis(
                                     ScaleScheme.light_colors,
                                     orders_restricted=orders_input_array,
                                     mask_restricted=mask_orders,
-                                    orders_dict=orders_dict,
+                                    orders_names_dict=orders_names_dict,
+                                    orders_labels_dict = orders_labels_dict,
                                 )
 
                                 # creates the object used to generate and plot statistical diagnostics
@@ -1061,7 +1070,7 @@ def gp_analysis(
         print("\n\n************************************")
         print("Available potentials: " + str(scalescheme_current_list))
         print("Available observables: " + str(observable_current_list))
-        print("Available Q parametrizations: ['poly', 'max', 'sum']")
+        print("Available Q parametrizations: ['smoothmax', 'max', 'sum']")
         print("Available input spaces: " + str(inputspace_current_list))
         print("Available train/test splits: " + str(traintest_current_list))
         print("Available length scales: " + str(lengthscale_current_list))
