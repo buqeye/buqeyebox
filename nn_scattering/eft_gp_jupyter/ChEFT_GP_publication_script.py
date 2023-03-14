@@ -1041,6 +1041,32 @@ def gp_analysis(
                                         whether_save=save_trunc_bool,
                                         residual_plot=False,
                                     )
+                                if plot_lambdapost_curvewise_bool:
+                                    # MyPlot.PlotLambdaPosteriorCurvewise(SGT = SGT,
+                                    #                            DSG = DSG,
+                                    #                            AY = AY,
+                                    #                            A = A,
+                                    #                            D = D,
+                                    #                            AXX = AXX,
+                                    #                            AYY = AYY,
+                                    #                            t_lab = t_lab,
+                                    #                            degrees = degrees,
+                                    #                            whether_save = save_lambdapost_curvewise_bool)
+                                    MyPlot.plot_lambda_mpi_posterior_curvewise(
+                                        SGT=SGT,
+                                        DSG=DSG,
+                                        AY=AY,
+                                        A=A,
+                                        D=D,
+                                        AXX=AXX,
+                                        AYY=AYY,
+                                        t_lab=t_lab,
+                                        degrees=degrees,
+                                        Lambda_b_true=Lambdab,
+                                        ls_true = None, 
+                                        mpi_true=m_pi_eff,
+                                        whether_save=save_lambdapost_curvewise_bool,
+                                    )
                                 if plot_plotzilla_bool:
                                     MyPlot.plotzilla(whether_save=save_plotzilla_bool)
     # except:

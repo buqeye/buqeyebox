@@ -230,7 +230,8 @@ def corner_plot(n_plots = 3, height = 9):
     # print(ax_joint_array[-3].get_xticklabels())
     ax_marg_array = np.reshape(
                     [fig.add_subplot(gsp[i * (n_plots + 1)],
-                            yticklabels = [], yticks = []) 
+                            yticklabels = [], yticks = [], 
+                            xticklabels = []) 
                      for i in range(0, n_plots)], 
                 (n_plots))
     
@@ -2530,7 +2531,7 @@ class GSUMDiagnostics:
         # X_Lb = gm.cartesian(t_lab_Lb, degrees_Lb)
         # X_Lb_prime = gm.cartesian(t_lab_Lb_prime, degrees_Lb_prime)
         # print(X_Lb_prime)
-        Lb_colors = self.light_colors[-2:]
+        
         # print(self.light_colors)
         # print(Lb_colors)
         # Lambda_b_array = np.arange(1, 1501, 1)
@@ -2546,14 +2547,40 @@ class GSUMDiagnostics:
         # self.lambda_vals = self.posteriorgrid.y_vals
         # lambda_vals = np.linspace(Lambda_b_true / 2.5, Lambda_b_true * 2.5, 51)
         mpi_vals = np.linspace(mpi_true / 3.1, mpi_true * 3.1, 24)
-        ls_vals = np.linspace(0.02, 2.00, 25)
-        ls_vals_Elab = np.linspace(1, 300, len(ls_vals))
+        
+        if self.observable_name == "SGT":
+            ls_vals = np.linspace(1, 300, 25)
+        else:
+            ls_vals = np.linspace(0.02, 2.00, 25)
         # mpi_vals = np.array([131, 133, 135, 137, 139, 141, 143, 145])
         # mpi_vals = np.array([193, 195, 197, 199, 201, 203, 205, 207])
         lambda_vals = np.linspace(np.max(mpi_vals), 1500, 26)
         # lambda_vals = np.linspace(590, 650, 10)
         
         variables_true_list = [Lambda_b_true, ls_true, mpi_true]
+        
+        # for i, (posterior, bounds, median) in enumerate(results):
+        order_num = 2
+        Lb_colors = self.light_colors[-1 * order_num:]
+        obs_num = 1
+        
+        LambdabVariable = RandomVariable(var = lambda_vals, 
+                                         name = 'Lambdab', 
+                                         label = "\Lambda_{b}", 
+                                         units = "MeV", 
+                                         ticks = [300, 600, 900, 1200])
+        # this will need to change for SGT vs. other observables
+        LsVariable = RandomVariable(var = ls_vals, 
+                                         name = 'ls', 
+                                         label = "\ell", 
+                                         units = "", 
+                                         ticks = [])
+        MpieffVariable = RandomVariable(var = mpi_vals, 
+                                         name = 'mpieff', 
+                                         label = "m_{\pi}", 
+                                         units = "MeV", 
+                                         ticks = [50, 100, 150, 200, 250, 300, 350])
+        variables_array = np.array([LambdabVariable, LsVariable, MpieffVariable])
         
         lambda_logprior = Lb_logprior(lambda_vals)
         mpi_logprior = mpieff_logprior(mpi_vals)
@@ -2565,7 +2592,7 @@ class GSUMDiagnostics:
                 'Lbuniformlogprior' + '_' + \
                 'mpieffuniformlogprior' + '_' + \
                 'Lambdab' + str(len(lambda_vals)) + 'pts' + f'{min(lambda_vals):.2f}' + 'to' +  f'{max(lambda_vals):.2f}' + '_' + \
-                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals_Elab):.2f}' + 'to' + f'{max(ls_vals_Elab):.2f}' + '_' + \
+                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals):.2f}' + 'to' + f'{max(ls_vals):.2f}' + '_' + \
                 'mpieff' + str(len(mpi_vals)) + 'pts' + f'{min(mpi_vals):.2f}' + 'to' + f'{max(mpi_vals):.2f}' + \
                 '.txt'
         print("We look for data in the file " + data_filename_SGT_nho + ".")
@@ -2576,7 +2603,7 @@ class GSUMDiagnostics:
                 'Lbuniformlogprior' + '_' + \
                 'mpieffuniformlogprior' + '_' + \
                 'Lambdab' + str(len(lambda_vals)) + 'pts' + f'{min(lambda_vals):.2f}' + 'to' +  f'{max(lambda_vals):.2f}' + '_' + \
-                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals_Elab):.2f}' + 'to' + f'{max(ls_vals_Elab):.2f}' + '_' + \
+                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals):.2f}' + 'to' + f'{max(ls_vals):.2f}' + '_' + \
                 'mpieff' + str(len(mpi_vals)) + 'pts' + f'{min(mpi_vals):.2f}' + 'to' + f'{max(mpi_vals):.2f}' + \
                 '.txt'
         data_filename_DSG_nho = 'data/' + \
@@ -2586,7 +2613,7 @@ class GSUMDiagnostics:
                 'Lbuniformlogprior' + '_' + \
                 'mpieffuniformlogprior' + '_' + \
                 'Lambdab' + str(len(lambda_vals)) + 'pts' + f'{min(lambda_vals):.2f}' + 'to' +  f'{max(lambda_vals):.2f}' + '_' + \
-                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals_Elab):.2f}' + 'to' + f'{max(ls_vals_Elab):.2f}' + '_' + \
+                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals):.2f}' + 'to' + f'{max(ls_vals):.2f}' + '_' + \
                 'mpieff' + str(len(mpi_vals)) + 'pts' + f'{min(mpi_vals):.2f}' + 'to' + f'{max(mpi_vals):.2f}' + \
                 '.txt'
         data_filename_DSG_ho = 'data/' + \
@@ -2596,7 +2623,7 @@ class GSUMDiagnostics:
                 'Lbuniformlogprior' + '_' + \
                 'mpieffuniformlogprior' + '_' + \
                 'Lambdab' + str(len(lambda_vals)) + 'pts' + f'{min(lambda_vals):.2f}' + 'to' +  f'{max(lambda_vals):.2f}' + '_' + \
-                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals_Elab):.2f}' + 'to' + f'{max(ls_vals_Elab):.2f}' + '_' + \
+                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals):.2f}' + 'to' + f'{max(ls_vals):.2f}' + '_' + \
                 'mpieff' + str(len(mpi_vals)) + 'pts' + f'{min(mpi_vals):.2f}' + 'to' + f'{max(mpi_vals):.2f}' + \
                 '.txt'
         data_filename_spins_nho = 'data/' + \
@@ -2606,7 +2633,7 @@ class GSUMDiagnostics:
                 'Lbuniformlogprior' + '_' + \
                 'mpieffuniformlogprior' + '_' + \
                 'Lambdab' + str(len(lambda_vals)) + 'pts' + f'{min(lambda_vals):.2f}' + 'to' +  f'{max(lambda_vals):.2f}' + '_' + \
-                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals_Elab):.2f}' + 'to' + f'{max(ls_vals_Elab):.2f}' + '_' + \
+                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals):.2f}' + 'to' + f'{max(ls_vals):.2f}' + '_' + \
                 'mpieff' + str(len(mpi_vals)) + 'pts' + f'{min(mpi_vals):.2f}' + 'to' + f'{max(mpi_vals):.2f}' + \
                 '.txt'
         data_filename_spins_ho = 'data/' + \
@@ -2616,7 +2643,7 @@ class GSUMDiagnostics:
                 'Lbuniformlogprior' + '_' + \
                 'mpieffuniformlogprior' + '_' + \
                 'Lambdab' + str(len(lambda_vals)) + 'pts' + f'{min(lambda_vals):.2f}' + 'to' +  f'{max(lambda_vals):.2f}' + '_' + \
-                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals_Elab):.2f}' + 'to' + f'{max(ls_vals_Elab):.2f}' + '_' + \
+                'ls' + str(len(ls_vals)) + 'pts' + f'{min(ls_vals):.2f}' + 'to' + f'{max(ls_vals):.2f}' + '_' + \
                 'mpieff' + str(len(mpi_vals)) + 'pts' + f'{min(mpi_vals):.2f}' + 'to' + f'{max(mpi_vals):.2f}' + \
                 '.txt'
                 
@@ -2635,559 +2662,668 @@ class GSUMDiagnostics:
         
         BATCH_SIZE = 100
         
-        try:
-            like_sgt_nho = np.reshape(np.loadtxt(data_filename_SGT_nho), 
-                                   (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
-            like_sgt_ho = np.reshape(np.loadtxt(data_filename_SGT_ho), 
-                                   (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
-            like_dsg_nho = np.reshape(np.loadtxt(data_filename_DSG_nho), 
-                                   (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            like_dsg_ho = np.reshape(np.loadtxt(data_filename_DSG_ho), 
-                                   (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            like_spins_nho = np.reshape(np.loadtxt(data_filename_spins_nho), 
-                                   (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            like_spins_ho = np.reshape(np.loadtxt(data_filename_spins_ho), 
-                                   (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+        
             
-            like_list = [like_sgt_nho, like_sgt_ho, 
-                         like_dsg_nho, like_dsg_ho, 
-                         like_spins_nho, like_spins_ho]
+            
+        try:
+            for order_counter in range(1, order_num + 1):
+                order = np.max(self.nn_orders) - order_num + order_counter
+                print("order = " + str(order))
+                print(str(3 / 0))
+                # like_sgt_nho = np.reshape(np.loadtxt(data_filename_SGT_nho), 
+                #                        (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
+                # like_sgt_ho = np.reshape(np.loadtxt(data_filename_SGT_ho), 
+                #                        (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
+                # like_dsg_nho = np.reshape(np.loadtxt(data_filename_DSG_nho), 
+                #                        (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                # like_dsg_ho = np.reshape(np.loadtxt(data_filename_DSG_ho), 
+                #                        (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                # like_spins_nho = np.reshape(np.loadtxt(data_filename_spins_nho), 
+                #                        (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                # like_spins_ho = np.reshape(np.loadtxt(data_filename_spins_ho), 
+                #                        (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                
+                # like_list = [like_sgt_nho, like_sgt_ho, 
+                #              like_dsg_nho, like_dsg_ho, 
+                #              like_spins_nho, like_spins_ho]
         
         except:
             loglike_list = []
             
-            # # creates and fits the TruncationGP
-            # self.gp_post = gm.TruncationGP(self.kernel, 
-            #                             ref = lambda_interp_f_ref, 
-            #                             ratio = lambda_interp_f_ratio, 
-            #                             center = self.center, 
-            #                             disp = self.disp, 
-            #                             df = self.df, 
-            #                             scale = self.std_est, 
-            #                             excluded = [0], 
-            #                             ratio_kws = {"lambda_var" : self.Lambda_b})
-            
-            # Mask unused SGT data, and compute results
-            # print(SGT.shape)
-            # print(SGT[self.nn_orders_mask, :].shape)
-            # print((SGT[self.nn_orders_mask, :])[self.mask_restricted, :].shape)
-            sgt_data = (SGT[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)]
-            # print("sgt_Lb has shape " + str(sgt_Lb.shape))
-            # print(t_lab_Lb)
-            # print(t_lab_Lb_prime)
-            # print(E_to_p(t_lab, "np"))
-            # print(interp_f_ratio_Lb_mpi(t_lab_Lb_prime, E_to_p(t_lab, "np"), self.Q_param, mpi_true, Lambda_b_true))
-            # creates and fits the TruncationGP
-            gp_post_sgt_nho = gm.TruncationGP(self.kernel, 
-                                        ref = sgt_data[0], 
-                                        ratio = interp_f_ratio_Lb_mpi, 
-                                        center = self.center, 
-                                        disp = self.disp, 
-                                        df = self.df, 
-                                        scale = self.std_est, 
-                                        excluded = [0], 
-                                        ratio_kws = {"x_interp" : E_to_p(t_lab, "np"),
-                                                "x_interp_Q" : E_to_p(t_lab, "np"), 
-                                                "Q_param" : self.Q_param, 
-                                                "mpi_var" : mpi_true,  
-                                                "lambda_var" : Lambda_b_true})
-            gp_post_sgt_nho.fit(t_lab_Lb_prime[:, None],  
-                                  sgt_data.T, 
-                                  orders = self.nn_orders_full, 
-                                  orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
-            gp_post_sgt_ho = gm.TruncationGP(self.kernel, 
-                                        ref = sgt_data[0], 
-                                        ratio = interp_f_ratio_Lb_mpi, 
-                                        center = self.center, 
-                                        disp = self.disp, 
-                                        df = self.df, 
-                                        scale = self.std_est, 
-                                        excluded = [0], 
-                                        ratio_kws = {"x_interp" : E_to_p(t_lab, "np"),
-                                                "x_interp_Q" : E_to_p(t_lab, "np"), 
-                                                "Q_param" : self.Q_param, 
-                                                "mpi_var" : mpi_true,  
-                                                "lambda_var" : Lambda_b_true})
-            gp_post_sgt_ho.fit(t_lab_Lb_prime[:, None],  
-                                  sgt_data.T, 
-                                  orders = self.nn_orders_full, 
-                                  orders_eval = self.nn_orders[:len(self.nn_orders)])
-            # sgt_Lb_nho_result = compute_posterior_intervals(
-            #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
-            #     orders = self.nn_orders, 
-            #     max_idx = max(self.nn_orders) - 2,
-            #     logprior=logprior, Lb=Lambda_b_array)
-            # sgt_Lb_ho_result = compute_posterior_intervals(
-            #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
-            #     orders = self.nn_orders, 
-            #     max_idx = max(self.nn_orders) - 1,
-            #     logprior = logprior, Lb = Lambda_b_array)
-            
-            # evaluates the probability across the mesh
-            
-            sgt_loglike_nho = np.array([[[
-                gp_post_sgt_nho.log_marginal_likelihood([ls_,], 
-                        orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
-                        **{"x_interp" : E_to_p(t_lab, "np"),
-                            "x_interp_Q" : E_to_p(t_lab, "np"), 
-                            "Q_param" : self.Q_param, 
-                            "mpi_var" : mpi_, 
-                            "lambda_var" : lambda_})
-                    for mpi_ in mpi_vals]
-                    for ls_ in np.log(ls_vals_Elab)]
-                    for lambda_ in lambda_vals])
-            
-            
-            gp_post_nho_ray = ray.put(gp_post_sgt_nho)
-            orders_nho_ray = ray.put(self.nn_orders[:len(self.nn_orders) - 1])
-            t_lab_mom_ray = ray.put(E_to_p(t_lab, "np"))
-            
-            
-            # Create hyperparameter grid
-            mesh_cart = gm.cartesian(lambda_vals, np.log(ls_vals_Elab), mpi_vals)
-            print(np.shape(mesh_cart))
-            print(mesh_cart)
-            
-            log_like_ids = []
-            for i in range(0, len(mesh_cart), BATCH_SIZE):
-                batch = mesh_cart[i : i + BATCH_SIZE]
-                log_like_ids.append(log_likelihood.remote(gp_post_nho_ray, 
-                        orders_nho_ray, t_lab_mom_ray, t_lab_mom_ray, batch))
-            log_like = list(itertools.chain(*ray.get(log_like_ids)))
-            print(np.shape(log_like))
-            # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-            sgt_loglike_nho = np.reshape(log_like, (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
-            
-    
-            # # # adds the log prior to the log likelihood
-            # # ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
-            # # adds the log prior to the log likelihood
-            # print(np.shape(np.swapaxes(np.tile( lambda_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[2], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 2)))
-            # sgt_lambda_ls_mpi_loglike_nho += np.swapaxes(np.tile( lambda_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[2], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 2)
-            # print(np.shape(np.swapaxes(np.tile( mpi_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[0], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 0)))
-            # sgt_lambda_ls_mpi_loglike_nho += np.swapaxes(np.tile( mpi_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[0], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 0)
-            # print("lambda_ls_mpi_loglike_nho has shape " + str(np.shape(sgt_lambda_ls_mpi_loglike_nho)))
-            
-            # # Makes sure that the values don't get too big or too small
-            # sgt_lambda_ls_mpi_like_nho = np.exp(sgt_lambda_ls_mpi_loglike_nho - np.max(sgt_lambda_ls_mpi_loglike_nho))
-    
-            # # # Now compute the marginal distributions
-            # # lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
-            # # # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
-    
-            # # # Normalize them
-            # # lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
-            # # # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
-    
-            # # sgt_Lb_nho_result = lambda_like_nho
-            
-            # # Now compute the marginal distributions
-            # sgt_lambda_like_nho = np.trapz(
-            #     np.trapz(sgt_lambda_ls_mpi_like_nho, x = mpi_vals, axis = 2), 
-            #         x = ls_vals, axis = 1)
-            # sgt_ls_like_nho = np.trapz(
-            #     np.trapz(sgt_lambda_ls_mpi_like_nho, x = mpi_vals, axis = 2), 
-            #         x = lambda_vals, axis = 0)
-            # sgt_mpi_like_nho = np.trapz(
-            #     np.trapz(sgt_lambda_ls_mpi_like_nho, x = ls_vals, axis = 1), 
-            #         x = lambda_vals, axis = 0)
-            # print(np.shape(sgt_lambda_like_nho))
-            # print(np.shape(sgt_ls_like_nho))
-            # print(np.shape(sgt_mpi_like_nho))
-        
-            # # Normalize them
-            # sgt_lambda_like_nho /= np.trapz(sgt_lambda_like_nho, x = lambda_vals, axis = 0)
-            # sgt_ls_like_nho /= np.trapz(sgt_ls_like_nho, x = ls_vals, axis = 0)
-            # sgt_mpi_like_nho /= np.trapz(sgt_mpi_like_nho, x = mpi_vals, axis = 0)
-        
-            # sgt_Lb_nho_result = sgt_lambda_like_nho
-            # sgt_ls_nho_result = sgt_ls_like_nho
-            # sgt_mpi_nho_result = sgt_mpi_like_nho
-            
-            # ls_lambda_loglike_ho = np.array([[
-            #     gp_post_sgt_Lb_ho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders)],
-            #                                           **{"lambda_var" : lambda_})
-            #         for ls_ in np.log(ls_vals_Lb)]
-            #         for lambda_ in lambda_vals_Lb])
-            
-            # # adds the log prior to the log likelihood
-            # ls_lambda_loglike_ho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_ho)[1], 1) ).T
-    
-            # # Makes sure that the values don't get too big or too small
-            # ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
-    
-            # # Now compute the marginal distributions
-            # lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
-            # # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
-    
-            # # Normalize them
-            # lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
-            # # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
-    
-            # sgt_Lb_ho_result = lambda_like_ho
-            
-            # start_time = time.time()
-            # print("Starting sequential...")
-            # # evaluates the probability across the mesh
-            # sgt_loglike_ho = np.array([[[
-            #     gp_post_sgt_ho.log_marginal_likelihood([ls_,], 
-            #             orders_eval = self.nn_orders[:len(self.nn_orders)],
-            #             **{"x_interp" : E_to_p(t_lab, "np"),
-            #                 "x_interp_Q" : E_to_p(t_lab, "np"), 
-            #                 "Q_param" : self.Q_param, 
-            #                 "mpi_var" : mpi_, 
-            #                 "lambda_var" : lambda_})
-            #         for mpi_ in mpi_vals]
-            #         for ls_ in np.log(ls_vals_Elab)]
-            #         for lambda_ in lambda_vals])
-            # print(f"Time elapsed sequential: {time.time()-start_time:.2f}s")
-            
-            
-            start_time = time.time()
-            print("Starting...")
-            gp_post_ho_ray = ray.put(gp_post_sgt_ho)
-            orders_ho_ray = ray.put(self.nn_orders[:len(self.nn_orders)])
-            t_lab_mom_ray = ray.put(E_to_p(t_lab, "np"))
-            
-            log_like_ids = []
-            for i in range(0, len(mesh_cart), BATCH_SIZE):
-                batch = mesh_cart[i : i + BATCH_SIZE]
-                log_like_ids.append(log_likelihood.remote(gp_post_ho_ray, 
-                        orders_ho_ray, t_lab_mom_ray, t_lab_mom_ray, batch))
-            log_like = list(itertools.chain(*ray.get(log_like_ids)))
-            print(np.shape(log_like))
-            # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-            sgt_loglike_ho = np.reshape(log_like, (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
-            print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-            
-            # # # adds the log prior to the log likelihood
-            # # ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
-            # # adds the log prior to the log likelihood
-            # print(np.shape(np.swapaxes(np.tile( lambda_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[2], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 2)))
-            # sgt_lambda_ls_mpi_loglike_ho += np.swapaxes(np.tile( lambda_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[2], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 2)
-            # print(np.shape(np.swapaxes(np.tile( mpi_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[0], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 0)))
-            # sgt_lambda_ls_mpi_loglike_ho += np.swapaxes(np.tile( mpi_logprior, 
-            #             (
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[0], 
-            #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
-            #              1
-            #              ) 
-            #         ), 0, 0)
-            # print("lambda_ls_mpi_loglike_ho has shape " + str(np.shape(sgt_lambda_ls_mpi_loglike_ho)))
-            
-            # # Makes sure that the values don't get too big or too small
-            # sgt_lambda_ls_mpi_like_ho = np.exp(sgt_lambda_ls_mpi_loglike_ho - np.max(sgt_lambda_ls_mpi_loglike_ho))
-    
-            # # # Now compute the marginal distributions
-            # # lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
-            # # # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
-    
-            # # # Normalize them
-            # # lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
-            # # # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
-    
-            # # sgt_Lb_nho_result = lambda_like_nho
-            
-            # # Now compute the marginal distributions
-            # sgt_lambda_like_ho = np.trapz(
-            #     np.trapz(sgt_lambda_ls_mpi_like_ho, x = mpi_vals, axis = 2), 
-            #         x = ls_vals, axis = 1)
-            # sgt_ls_like_ho = np.trapz(
-            #     np.trapz(sgt_lambda_ls_mpi_like_ho, x = mpi_vals, axis = 2), 
-            #         x = lambda_vals, axis = 0)
-            # sgt_mpi_like_ho = np.trapz(
-            #     np.trapz(sgt_lambda_ls_mpi_like_ho, x = ls_vals, axis = 1), 
-            #         x = lambda_vals, axis = 0)
-        
-            # # Normalize them
-            # sgt_lambda_like_ho /= np.trapz(sgt_lambda_like_ho, x = lambda_vals, axis = 0)
-            # sgt_ls_like_ho /= np.trapz(sgt_ls_like_ho, x = ls_vals, axis = 0)
-            # sgt_mpi_like_ho /= np.trapz(sgt_mpi_like_ho, x = mpi_vals, axis = 0)
-        
-            # sgt_Lb_ho_result = sgt_lambda_like_ho
-            # sgt_ls_ho_result = sgt_ls_like_ho
-            # sgt_mpi_ho_result = sgt_mpi_like_ho
-            
-            print("We're finished with the total cross section.")
+            for order_counter in range(1, order_num + 1):
+                order = np.max(self.nn_orders) - order_num + order_counter
+                print("order = " + str(order))
+                orders_nho_ray = ray.put(self.nn_orders[:order])
                 
-            dsg_loglike_nho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            dsg_loglike_ho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            spins_loglike_nho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            spins_loglike_ho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            
-            # dsg_Lb_nho_result = np.ones((len(lambda_vals)))
-            # dsg_Lb_ho_result = np.ones((len(lambda_vals)))
-            # dsg_mpi_nho_result = np.ones((len(mpi_vals)))
-            # dsg_mpi_ho_result = np.ones((len(mpi_vals)))
-            
-            # spins_Lb_nho_result = np.ones((len(lambda_vals)))
-            # spins_Lb_ho_result = np.ones((len(lambda_vals)))
-            # spins_mpi_nho_result = np.ones((len(mpi_vals)))
-            # spins_mpi_ho_result = np.ones((len(mpi_vals)))
-            
-            for t_lab_Lb_loop in zip(t_lab_Lb, t_lab_Lb_prime):
-                # print(np.shape(-1. * np.cos(np.radians(degrees))))
-                # print(np.shape(Q_approx(E_to_p(t_lab_Lb_loop[1], "np"), self.Q_param, self.Lambda_b, interaction='np') * np.ones((len(degrees)))))
-                # interp_f_ratio_Lb_degrees = interp1d(-1. * np.cos(np.radians(degrees)),
-                #         Q_approx(E_to_p(t_lab_Lb_loop[1], "np"), self.Q_param, self.Lambda_b, interaction='np') * np.ones((len(degrees))))
-                # # Mask unused DSG data, and compute results
-                dsg_data = np.reshape((DSG[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
-                # print("dsg_Lb has shape " + str(np.shape(dsg_Lb)))
-                # # print("dsg_Lb = " + str(dsg_Lb))
-                # dsg_Lb_nho_result = compute_posterior_intervals(
-                #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
-                #     orders = self.nn_orders, 
-                #     max_idx = max(self.nn_orders) - 2,
-                #     logprior = logprior, Lb = Lambda_b_array)
-                # dsg_Lb_ho_result = compute_posterior_intervals(
-                #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
-                #     orders = self.nn_orders, 
-                #     max_idx = max(self.nn_orders) - 1,
-                #     logprior = logprior, Lb = Lambda_b_array)
-                gp_post_dsg_nho = gm.TruncationGP(self.kernel, 
-                                            ref = dsg_data[0], 
-                                            ratio = interp_f_ratio_Lb_mpi, 
-                                            center = self.center, 
-                                            disp = self.disp, 
-                                            df = self.df, 
-                                            scale = self.std_est, 
-                                            excluded = [0], 
-                                            ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
-                                                          "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                                                        "Q_param" : self.Q_param, 
-                                                        "mpi_var" : mpi_true,  
-                                                        "lambda_var" : Lambda_b_true})
-                gp_post_dsg_nho.fit(degrees_Lb_prime[:, None],  
-                                      dsg_data.T, 
-                                      orders = self.nn_orders_full, 
-                                      orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
-                gp_post_dsg_ho = gm.TruncationGP(self.kernel, 
-                                            ref = dsg_data[0], 
-                                            ratio = interp_f_ratio_Lb_mpi, 
-                                            center = self.center, 
-                                            disp = self.disp, 
-                                            df = self.df, 
-                                            scale = self.std_est, 
-                                            excluded = [0], 
-                                            ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
-                                                          "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                                                        "Q_param" : self.Q_param, 
-                                                        "mpi_var" : mpi_true,  
-                                                        "lambda_var" : Lambda_b_true})
-                gp_post_dsg_ho.fit(degrees_Lb_prime[:, None],  
-                                      dsg_data.T, 
-                                      orders = self.nn_orders_full, 
-                                      orders_eval = self.nn_orders[:len(self.nn_orders)])
-                
-                # # evaluates the probability across the mesh
-                # dsg_loglike_nho += np.array([[[
-                #     gp_post_dsg_nho.log_marginal_likelihood([ls_,], 
-                #                 orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
-                #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
-                #                         "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                #                         "Q_param" : self.Q_param, 
-                #                         "mpi_var" : mpi_, 
-                #                         "lambda_var" : lambda_})
-                #         for mpi_ in mpi_vals]
-                #         for ls_ in np.log(ls_vals)]
-                #         for lambda_ in lambda_vals])
-                
-                gp_post_nho_ray = ray.put(gp_post_dsg_nho)
-                x_points_ray = ray.put(-1. * np.cos(np.radians(degrees)))
-                ratio_points_ray = ray.put(E_to_p(t_lab_Lb_loop[1], "np"))
-                
-                # Create hyperparameter grid
                 mesh_cart = gm.cartesian(lambda_vals, np.log(ls_vals), mpi_vals)
                 
-                log_like_ids = []
-                for i in range(0, len(mesh_cart), BATCH_SIZE):
-                    batch = mesh_cart[i : i + BATCH_SIZE]
-                    log_like_ids.append(log_likelihood.remote(gp_post_nho_ray, 
-                            orders_nho_ray, x_points_ray, ratio_points_ray, batch))
-                log_like = list(itertools.chain(*ray.get(log_like_ids)))
-                # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-                dsg_loglike_nho += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-                                
-                # # evaluates the probability across the mesh
-                # dsg_loglike_ho += np.array([[[
-                #     gp_post_dsg_ho.log_marginal_likelihood([ls_,], 
-                #                 orders_eval = self.nn_orders[:len(self.nn_orders)],
-                #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
-                #                         "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                #                         "Q_param" : self.Q_param, 
-                #                         "mpi_var" : mpi_, 
-                #                         "lambda_var" : lambda_})
-                #         for mpi_ in mpi_vals]
-                #         for ls_ in np.log(ls_vals)]
-                #         for lambda_ in lambda_vals])
-                
-                gp_post_ho_ray = ray.put(gp_post_dsg_ho)
-                
-                log_like_ids = []
-                for i in range(0, len(mesh_cart), BATCH_SIZE):
-                    batch = mesh_cart[i : i + BATCH_SIZE]
-                    log_like_ids.append(log_likelihood.remote(gp_post_ho_ray, 
-                            orders_ho_ray, x_points_ray, ratio_points_ray, batch))
-                log_like = list(itertools.chain(*ray.get(log_like_ids)))
-                # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-                dsg_loglike_ho += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-                                
-                spin_obs_list = [AY, A, D, AXX, AYY]
-                
-                gp_fits_spins_nho = []
-                gp_fits_spins_ho = []
-                
-                for so, spin_obs in enumerate(spin_obs_list):
-                    spin_data = np.reshape((spin_obs[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
-                    gp_fits_spins_nho.append(gm.TruncationGP(self.kernel, 
-                                                ref = np.ones((len(degrees_Lb))), 
+                if self.observable_name == "SGT":
+                    posterior_label = r'$\sigma$'
+                    # # creates and fits the TruncationGP
+                    # self.gp_post = gm.TruncationGP(self.kernel, 
+                    #                             ref = lambda_interp_f_ref, 
+                    #                             ratio = lambda_interp_f_ratio, 
+                    #                             center = self.center, 
+                    #                             disp = self.disp, 
+                    #                             df = self.df, 
+                    #                             scale = self.std_est, 
+                    #                             excluded = [0], 
+                    #                             ratio_kws = {"lambda_var" : self.Lambda_b})
+                    
+                    # Mask unused SGT data, and compute results
+                    # print(SGT.shape)
+                    # print(SGT[self.nn_orders_mask, :].shape)
+                    # print((SGT[self.nn_orders_mask, :])[self.mask_restricted, :].shape)
+                    sgt_data = (SGT[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb)]
+                    # print("sgt_Lb has shape " + str(sgt_Lb.shape))
+                    # print(t_lab_Lb)
+                    # print(t_lab_Lb_prime)
+                    # print(E_to_p(t_lab, "np"))
+                    # print(interp_f_ratio_Lb_mpi(t_lab_Lb_prime, E_to_p(t_lab, "np"), self.Q_param, mpi_true, Lambda_b_true))
+                    # creates and fits the TruncationGP
+                    
+                    gp_post_sgt_nho = gm.TruncationGP(self.kernel, 
+                                                ref = sgt_data[0], 
                                                 ratio = interp_f_ratio_Lb_mpi, 
                                                 center = self.center, 
                                                 disp = self.disp, 
                                                 df = self.df, 
                                                 scale = self.std_est, 
                                                 excluded = [0], 
-                                                ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
-                                                              "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                                                            "Q_param" : self.Q_param, 
-                                                            "mpi_var" : mpi_true,  
-                                                            "lambda_var" : Lambda_b_true}))
-                    gp_fits_spins_nho[so].fit(degrees_Lb_prime[:, None],  
-                                          spin_data.T, 
+                                                ratio_kws = {"x_interp" : E_to_p(t_lab, "np"),
+                                                        "x_interp_Q" : E_to_p(t_lab, "np"), 
+                                                        "Q_param" : self.Q_param, 
+                                                        "mpi_var" : mpi_true,  
+                                                        "lambda_var" : Lambda_b_true})
+                    gp_post_sgt_nho.fit(t_lab_Lb_prime[:, None],  
+                                          sgt_data.T, 
                                           orders = self.nn_orders_full, 
-                                          orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
-                    gp_fits_spins_ho.append(gm.TruncationGP(self.kernel, 
-                                                ref = np.ones((len(degrees_Lb))), 
-                                                ratio = interp_f_ratio_Lb_mpi, 
-                                                center = self.center, 
-                                                disp = self.disp, 
-                                                df = self.df, 
-                                                scale = self.std_est, 
-                                                excluded = [0], 
-                                                ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
-                                                              "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                                                            "Q_param" : self.Q_param, 
-                                                            "mpi_var" : mpi_true,  
-                                                            "lambda_var" : Lambda_b_true}))
-                    gp_fits_spins_ho[so].fit(degrees_Lb_prime[:, None],  
-                                          spin_data.T, 
-                                          orders = self.nn_orders_full, 
-                                          orders_eval = self.nn_orders[:len(self.nn_orders)])
-                
-                for gp_fit_spins in gp_fits_spins_nho:
-                    # # evaluates the probability across the mesh
-                    # spins_loglike_nho += np.array([[[
-                    #     gp_fit_spins.log_marginal_likelihood([ls_,], 
-                    #                     orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
-                    #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
-                    #                       "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                    #                       "Q_param" : self.Q_param, 
-                    #                       "mpi_var" : mpi_, 
-                    #                       "lambda_var" : lambda_})
+                                          orders_eval = self.nn_orders[:order])
+                    
+                    # gp_post_sgt_nho = gm.TruncationGP(self.kernel, 
+                    #                             ref = sgt_data[0], 
+                    #                             ratio = interp_f_ratio_Lb_mpi, 
+                    #                             center = self.center, 
+                    #                             disp = self.disp, 
+                    #                             df = self.df, 
+                    #                             scale = self.std_est, 
+                    #                             excluded = [0], 
+                    #                             ratio_kws = {"x_interp" : E_to_p(t_lab, "np"),
+                    #                                     "x_interp_Q" : E_to_p(t_lab, "np"), 
+                    #                                     "Q_param" : self.Q_param, 
+                    #                                     "mpi_var" : mpi_true,  
+                    #                                     "lambda_var" : Lambda_b_true})
+                    # gp_post_sgt_nho.fit(t_lab_Lb_prime[:, None],  
+                    #                       sgt_data.T, 
+                    #                       orders = self.nn_orders_full, 
+                    #                       orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+                    # gp_post_sgt_ho = gm.TruncationGP(self.kernel, 
+                    #                             ref = sgt_data[0], 
+                    #                             ratio = interp_f_ratio_Lb_mpi, 
+                    #                             center = self.center, 
+                    #                             disp = self.disp, 
+                    #                             df = self.df, 
+                    #                             scale = self.std_est, 
+                    #                             excluded = [0], 
+                    #                             ratio_kws = {"x_interp" : E_to_p(t_lab, "np"),
+                    #                                     "x_interp_Q" : E_to_p(t_lab, "np"), 
+                    #                                     "Q_param" : self.Q_param, 
+                    #                                     "mpi_var" : mpi_true,  
+                    #                                     "lambda_var" : Lambda_b_true})
+                    # gp_post_sgt_ho.fit(t_lab_Lb_prime[:, None],  
+                    #                       sgt_data.T, 
+                    #                       orders = self.nn_orders_full, 
+                    #                       orders_eval = self.nn_orders[:len(self.nn_orders)])
+                    
+                    # sgt_Lb_nho_result = compute_posterior_intervals(
+                    #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+                    #     orders = self.nn_orders, 
+                    #     max_idx = max(self.nn_orders) - 2,
+                    #     logprior=logprior, Lb=Lambda_b_array)
+                    # sgt_Lb_ho_result = compute_posterior_intervals(
+                    #     Lb_model, sgt_Lb, ratios_sgt_Lb, ref = sgt_Lb[0], 
+                    #     orders = self.nn_orders, 
+                    #     max_idx = max(self.nn_orders) - 1,
+                    #     logprior = logprior, Lb = Lambda_b_array)
+                    
+                    # evaluates the probability across the mesh
+                    
+                    # sgt_loglike_nho = np.array([[[
+                    #     gp_post_sgt_nho.log_marginal_likelihood([ls_,], 
+                    #             orders_eval = self.nn_orders[:order],
+                    #             **{"x_interp" : E_to_p(t_lab, "np"),
+                    #                 "x_interp_Q" : E_to_p(t_lab, "np"), 
+                    #                 "Q_param" : self.Q_param, 
+                    #                 "mpi_var" : mpi_, 
+                    #                 "lambda_var" : lambda_})
                     #         for mpi_ in mpi_vals]
-                    #         for ls_ in np.log(ls_vals)]
+                    #         for ls_ in np.log(ls_vals_Elab)]
                     #         for lambda_ in lambda_vals])
-                    gp_post_nho_ray = ray.put(gp_fit_spins)
+                    
+                    # sgt_loglike_nho = np.array([[[
+                    #     gp_post_sgt_nho.log_marginal_likelihood([ls_,], 
+                    #             orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                    #             **{"x_interp" : E_to_p(t_lab, "np"),
+                    #                 "x_interp_Q" : E_to_p(t_lab, "np"), 
+                    #                 "Q_param" : self.Q_param, 
+                    #                 "mpi_var" : mpi_, 
+                    #                 "lambda_var" : lambda_})
+                    #         for mpi_ in mpi_vals]
+                    #         for ls_ in np.log(ls_vals_Elab)]
+                    #         for lambda_ in lambda_vals])
+                    
+                    
+                    gp_post_nho_ray = ray.put(gp_post_sgt_nho)
+                    # orders_nho_ray = ray.put(self.nn_orders[:order])
+                    t_lab_mom_ray = ray.put(E_to_p(t_lab, "np"))
+                    
+                    
+                    # Create hyperparameter grid
+                    # mesh_cart = gm.cartesian(lambda_vals, np.log(ls_vals), mpi_vals)
+                    # print(np.shape(mesh_cart))
+                    # print(mesh_cart)
                     
                     log_like_ids = []
                     for i in range(0, len(mesh_cart), BATCH_SIZE):
                         batch = mesh_cart[i : i + BATCH_SIZE]
                         log_like_ids.append(log_likelihood.remote(gp_post_nho_ray, 
-                                orders_nho_ray, x_points_ray, ratio_points_ray, batch))
+                                orders_nho_ray, t_lab_mom_ray, t_lab_mom_ray, batch))
                     log_like = list(itertools.chain(*ray.get(log_like_ids)))
+                    print(np.shape(log_like))
                     # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-                    spins_loglike_nho += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-                    
+                    obs_loglike = np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
                 
-                for gp_fit_spins in gp_fits_spins_ho:
+        
+                # # # adds the log prior to the log likelihood
+                # # ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
+                # # adds the log prior to the log likelihood
+                # print(np.shape(np.swapaxes(np.tile( lambda_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[2], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 2)))
+                # sgt_lambda_ls_mpi_loglike_nho += np.swapaxes(np.tile( lambda_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[2], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 2)
+                # print(np.shape(np.swapaxes(np.tile( mpi_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[0], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 0)))
+                # sgt_lambda_ls_mpi_loglike_nho += np.swapaxes(np.tile( mpi_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[0], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_nho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 0)
+                # print("lambda_ls_mpi_loglike_nho has shape " + str(np.shape(sgt_lambda_ls_mpi_loglike_nho)))
+                
+                # # Makes sure that the values don't get too big or too small
+                # sgt_lambda_ls_mpi_like_nho = np.exp(sgt_lambda_ls_mpi_loglike_nho - np.max(sgt_lambda_ls_mpi_loglike_nho))
+        
+                # # # Now compute the marginal distributions
+                # # lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
+                # # # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+        
+                # # # Normalize them
+                # # lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
+                # # # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+        
+                # # sgt_Lb_nho_result = lambda_like_nho
+                
+                # # Now compute the marginal distributions
+                # sgt_lambda_like_nho = np.trapz(
+                #     np.trapz(sgt_lambda_ls_mpi_like_nho, x = mpi_vals, axis = 2), 
+                #         x = ls_vals, axis = 1)
+                # sgt_ls_like_nho = np.trapz(
+                #     np.trapz(sgt_lambda_ls_mpi_like_nho, x = mpi_vals, axis = 2), 
+                #         x = lambda_vals, axis = 0)
+                # sgt_mpi_like_nho = np.trapz(
+                #     np.trapz(sgt_lambda_ls_mpi_like_nho, x = ls_vals, axis = 1), 
+                #         x = lambda_vals, axis = 0)
+                # print(np.shape(sgt_lambda_like_nho))
+                # print(np.shape(sgt_ls_like_nho))
+                # print(np.shape(sgt_mpi_like_nho))
+            
+                # # Normalize them
+                # sgt_lambda_like_nho /= np.trapz(sgt_lambda_like_nho, x = lambda_vals, axis = 0)
+                # sgt_ls_like_nho /= np.trapz(sgt_ls_like_nho, x = ls_vals, axis = 0)
+                # sgt_mpi_like_nho /= np.trapz(sgt_mpi_like_nho, x = mpi_vals, axis = 0)
+            
+                # sgt_Lb_nho_result = sgt_lambda_like_nho
+                # sgt_ls_nho_result = sgt_ls_like_nho
+                # sgt_mpi_nho_result = sgt_mpi_like_nho
+                
+                # ls_lambda_loglike_ho = np.array([[
+                #     gp_post_sgt_Lb_ho.log_marginal_likelihood([ls_,], orders_eval = self.nn_orders[:len(self.nn_orders)],
+                #                                           **{"lambda_var" : lambda_})
+                #         for ls_ in np.log(ls_vals_Lb)]
+                #         for lambda_ in lambda_vals_Lb])
+                
+                # # adds the log prior to the log likelihood
+                # ls_lambda_loglike_ho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_ho)[1], 1) ).T
+        
+                # # Makes sure that the values don't get too big or too small
+                # ls_lambda_like_ho = np.exp(ls_lambda_loglike_ho - np.max(ls_lambda_loglike_ho))
+        
+                # # Now compute the marginal distributions
+                # lambda_like_ho = np.trapz(ls_lambda_like_ho, x = ls_vals_Lb, axis = -1)
+                # # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+        
+                # # Normalize them
+                # lambda_like_ho /= np.trapz(lambda_like_ho, x = lambda_vals_Lb, axis = 0)
+                # # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+        
+                # sgt_Lb_ho_result = lambda_like_ho
+                
+                # start_time = time.time()
+                # print("Starting sequential...")
+                # # evaluates the probability across the mesh
+                # sgt_loglike_ho = np.array([[[
+                #     gp_post_sgt_ho.log_marginal_likelihood([ls_,], 
+                #             orders_eval = self.nn_orders[:len(self.nn_orders)],
+                #             **{"x_interp" : E_to_p(t_lab, "np"),
+                #                 "x_interp_Q" : E_to_p(t_lab, "np"), 
+                #                 "Q_param" : self.Q_param, 
+                #                 "mpi_var" : mpi_, 
+                #                 "lambda_var" : lambda_})
+                #         for mpi_ in mpi_vals]
+                #         for ls_ in np.log(ls_vals_Elab)]
+                #         for lambda_ in lambda_vals])
+                # print(f"Time elapsed sequential: {time.time()-start_time:.2f}s")
+                
+                
+                # start_time = time.time()
+                # print("Starting...")
+                # gp_post_ho_ray = ray.put(gp_post_sgt_ho)
+                # orders_ho_ray = ray.put(self.nn_orders[:len(self.nn_orders)])
+                # t_lab_mom_ray = ray.put(E_to_p(t_lab, "np"))
+                
+                # log_like_ids = []
+                # for i in range(0, len(mesh_cart), BATCH_SIZE):
+                #     batch = mesh_cart[i : i + BATCH_SIZE]
+                #     log_like_ids.append(log_likelihood.remote(gp_post_ho_ray, 
+                #             orders_ho_ray, t_lab_mom_ray, t_lab_mom_ray, batch))
+                # log_like = list(itertools.chain(*ray.get(log_like_ids)))
+                # print(np.shape(log_like))
+                # # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
+                # sgt_loglike_ho = np.reshape(log_like, (len(lambda_vals), len(ls_vals_Elab), len(mpi_vals)))
+                # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
+                
+                # # # adds the log prior to the log likelihood
+                # # ls_lambda_loglike_nho += np.tile( lambda_logprior, (np.shape(ls_lambda_loglike_nho)[1], 1) ).T
+                # # adds the log prior to the log likelihood
+                # print(np.shape(np.swapaxes(np.tile( lambda_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[2], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 2)))
+                # sgt_lambda_ls_mpi_loglike_ho += np.swapaxes(np.tile( lambda_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[2], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 2)
+                # print(np.shape(np.swapaxes(np.tile( mpi_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[0], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 0)))
+                # sgt_lambda_ls_mpi_loglike_ho += np.swapaxes(np.tile( mpi_logprior, 
+                #             (
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[0], 
+                #              np.shape(sgt_lambda_ls_mpi_loglike_ho)[1], 
+                #              1
+                #              ) 
+                #         ), 0, 0)
+                # print("lambda_ls_mpi_loglike_ho has shape " + str(np.shape(sgt_lambda_ls_mpi_loglike_ho)))
+                
+                # # Makes sure that the values don't get too big or too small
+                # sgt_lambda_ls_mpi_like_ho = np.exp(sgt_lambda_ls_mpi_loglike_ho - np.max(sgt_lambda_ls_mpi_loglike_ho))
+        
+                # # # Now compute the marginal distributions
+                # # lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
+                # # # self.ls_like = np.trapz(self.ls_lambda_like, x = self.lambda_vals, axis = 0)
+        
+                # # # Normalize them
+                # # lambda_like_nho /= np.trapz(lambda_like_nho, x = lambda_vals_Lb, axis = 0)
+                # # # self.ls_like /= np.trapz(self.ls_like, x = self.ls_vals, axis = 0)
+        
+                # # sgt_Lb_nho_result = lambda_like_nho
+                
+                # # Now compute the marginal distributions
+                # sgt_lambda_like_ho = np.trapz(
+                #     np.trapz(sgt_lambda_ls_mpi_like_ho, x = mpi_vals, axis = 2), 
+                #         x = ls_vals, axis = 1)
+                # sgt_ls_like_ho = np.trapz(
+                #     np.trapz(sgt_lambda_ls_mpi_like_ho, x = mpi_vals, axis = 2), 
+                #         x = lambda_vals, axis = 0)
+                # sgt_mpi_like_ho = np.trapz(
+                #     np.trapz(sgt_lambda_ls_mpi_like_ho, x = ls_vals, axis = 1), 
+                #         x = lambda_vals, axis = 0)
+            
+                # # Normalize them
+                # sgt_lambda_like_ho /= np.trapz(sgt_lambda_like_ho, x = lambda_vals, axis = 0)
+                # sgt_ls_like_ho /= np.trapz(sgt_ls_like_ho, x = ls_vals, axis = 0)
+                # sgt_mpi_like_ho /= np.trapz(sgt_mpi_like_ho, x = mpi_vals, axis = 0)
+            
+                # sgt_Lb_ho_result = sgt_lambda_like_ho
+                # sgt_ls_ho_result = sgt_ls_like_ho
+                # sgt_mpi_ho_result = sgt_mpi_like_ho
+                
+                # print("We're finished with the total cross section.")
+                    
+                # dsg_loglike_nho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                # dsg_loglike_ho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                # spins_loglike_nho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                # spins_loglike_ho = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                
+                # dsg_Lb_nho_result = np.ones((len(lambda_vals)))
+                # dsg_Lb_ho_result = np.ones((len(lambda_vals)))
+                # dsg_mpi_nho_result = np.ones((len(mpi_vals)))
+                # dsg_mpi_ho_result = np.ones((len(mpi_vals)))
+                
+                # spins_Lb_nho_result = np.ones((len(lambda_vals)))
+                # spins_Lb_ho_result = np.ones((len(lambda_vals)))
+                # spins_mpi_nho_result = np.ones((len(mpi_vals)))
+                # spins_mpi_ho_result = np.ones((len(mpi_vals)))
+                
+                elif self.observable_name == "DSG":
+                    posterior_label = r'$\displaystyle\frac{d\sigma}{d\Omega}$'
+                    
+                    x_points_ray = ray.put(-1. * np.cos(np.radians(degrees)))
+                    
+                    obs_loglike = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                    
+                    for t_lab_Lb_loop in zip(t_lab_Lb, t_lab_Lb_prime):
+                        ratio_points_ray = ray.put(E_to_p(t_lab_Lb_loop[1], "np"))
+                        
+                        # print(np.shape(-1. * np.cos(np.radians(degrees))))
+                        # print(np.shape(Q_approx(E_to_p(t_lab_Lb_loop[1], "np"), self.Q_param, self.Lambda_b, interaction='np') * np.ones((len(degrees)))))
+                        # interp_f_ratio_Lb_degrees = interp1d(-1. * np.cos(np.radians(degrees)),
+                        #         Q_approx(E_to_p(t_lab_Lb_loop[1], "np"), self.Q_param, self.Lambda_b, interaction='np') * np.ones((len(degrees))))
+                        # # Mask unused DSG data, and compute results
+                        dsg_data = np.reshape((DSG[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+                        # print("dsg_Lb has shape " + str(np.shape(dsg_Lb)))
+                        # # print("dsg_Lb = " + str(dsg_Lb))
+                        # dsg_Lb_nho_result = compute_posterior_intervals(
+                        #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+                        #     orders = self.nn_orders, 
+                        #     max_idx = max(self.nn_orders) - 2,
+                        #     logprior = logprior, Lb = Lambda_b_array)
+                        # dsg_Lb_ho_result = compute_posterior_intervals(
+                        #     Lb_model, dsg_Lb, ratios_dsg_Lb, ref = dsg_Lb[0], 
+                        #     orders = self.nn_orders, 
+                        #     max_idx = max(self.nn_orders) - 1,
+                        #     logprior = logprior, Lb = Lambda_b_array)
+                        
+                        gp_post_dsg_nho = gm.TruncationGP(self.kernel, 
+                                                    ref = dsg_data[0], 
+                                                    ratio = interp_f_ratio_Lb_mpi, 
+                                                    center = self.center, 
+                                                    disp = self.disp, 
+                                                    df = self.df, 
+                                                    scale = self.std_est, 
+                                                    excluded = [0], 
+                                                    ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
+                                                                  "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                                                                "Q_param" : self.Q_param, 
+                                                                "mpi_var" : mpi_true,  
+                                                                "lambda_var" : Lambda_b_true})
+                        gp_post_dsg_nho.fit(degrees_Lb_prime[:, None],  
+                                              dsg_data.T, 
+                                              orders = self.nn_orders_full, 
+                                              orders_eval = self.nn_orders[:order])
+                        
+                        # gp_post_dsg_nho = gm.TruncationGP(self.kernel, 
+                        #                             ref = dsg_data[0], 
+                        #                             ratio = interp_f_ratio_Lb_mpi, 
+                        #                             center = self.center, 
+                        #                             disp = self.disp, 
+                        #                             df = self.df, 
+                        #                             scale = self.std_est, 
+                        #                             excluded = [0], 
+                        #                             ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
+                        #                                           "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                        #                                         "Q_param" : self.Q_param, 
+                        #                                         "mpi_var" : mpi_true,  
+                        #                                         "lambda_var" : Lambda_b_true})
+                        # gp_post_dsg_nho.fit(degrees_Lb_prime[:, None],  
+                        #                       dsg_data.T, 
+                        #                       orders = self.nn_orders_full, 
+                        #                       orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+                        # gp_post_dsg_ho = gm.TruncationGP(self.kernel, 
+                        #                             ref = dsg_data[0], 
+                        #                             ratio = interp_f_ratio_Lb_mpi, 
+                        #                             center = self.center, 
+                        #                             disp = self.disp, 
+                        #                             df = self.df, 
+                        #                             scale = self.std_est, 
+                        #                             excluded = [0], 
+                        #                             ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
+                        #                                           "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                        #                                         "Q_param" : self.Q_param, 
+                        #                                         "mpi_var" : mpi_true,  
+                        #                                         "lambda_var" : Lambda_b_true})
+                        # gp_post_dsg_ho.fit(degrees_Lb_prime[:, None],  
+                        #                       dsg_data.T, 
+                        #                       orders = self.nn_orders_full, 
+                        #                       orders_eval = self.nn_orders[:len(self.nn_orders)])
+                        
+                        # # evaluates the probability across the mesh
+                        # dsg_loglike_nho += np.array([[[
+                        #     gp_post_dsg_nho.log_marginal_likelihood([ls_,], 
+                        #                 orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                        #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
+                        #                         "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                        #                         "Q_param" : self.Q_param, 
+                        #                         "mpi_var" : mpi_, 
+                        #                         "lambda_var" : lambda_})
+                        #         for mpi_ in mpi_vals]
+                        #         for ls_ in np.log(ls_vals)]
+                        #         for lambda_ in lambda_vals])
+                        
+                        gp_post_nho_ray = ray.put(gp_post_dsg_nho)
+                        # x_points_ray = ray.put(-1. * np.cos(np.radians(degrees)))
+                        # ratio_points_ray = ray.put(E_to_p(t_lab_Lb_loop[1], "np"))
+                        
+                        # Create hyperparameter grid
+                        # mesh_cart = gm.cartesian(lambda_vals, np.log(ls_vals), mpi_vals)
+                        
+                        log_like_ids = []
+                        for i in range(0, len(mesh_cart), BATCH_SIZE):
+                            batch = mesh_cart[i : i + BATCH_SIZE]
+                            log_like_ids.append(log_likelihood.remote(gp_post_nho_ray, 
+                                    orders_nho_ray, x_points_ray, ratio_points_ray, batch))
+                        log_like = list(itertools.chain(*ray.get(log_like_ids)))
+                        # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
+                        obs_loglike += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                                    
                     # # evaluates the probability across the mesh
-                    # spins_loglike_ho += np.array([[[
-                    #     gp_fit_spins.log_marginal_likelihood([ls_,], 
-                    #                     orders_eval = self.nn_orders[:len(self.nn_orders)],
+                    # dsg_loglike_ho += np.array([[[
+                    #     gp_post_dsg_ho.log_marginal_likelihood([ls_,], 
+                    #                 orders_eval = self.nn_orders[:len(self.nn_orders)],
                     #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
-                    #                       "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
-                    #                       "Q_param" : self.Q_param, 
-                    #                       "mpi_var" : mpi_, 
-                    #                       "lambda_var" : lambda_})
+                    #                         "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                    #                         "Q_param" : self.Q_param, 
+                    #                         "mpi_var" : mpi_, 
+                    #                         "lambda_var" : lambda_})
                     #         for mpi_ in mpi_vals]
                     #         for ls_ in np.log(ls_vals)]
                     #         for lambda_ in lambda_vals])
-                    gp_post_ho_ray = ray.put(gp_fit_spins)
                     
-                    log_like_ids = []
-                    for i in range(0, len(mesh_cart), BATCH_SIZE):
-                        batch = mesh_cart[i : i + BATCH_SIZE]
-                        log_like_ids.append(log_likelihood.remote(gp_post_ho_ray, 
-                                orders_ho_ray, x_points_ray, ratio_points_ray, batch))
-                    log_like = list(itertools.chain(*ray.get(log_like_ids)))
-                    # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
-                    spins_loglike_ho += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
-            # # # Normalize them
-            # # dsg_Lb_ho_result /= np.trapz(dsg_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
-            # # dsg_Lb_nho_result /= np.trapz(dsg_Lb_nho_result, x = lambda_vals_Lb, axis = 0)
-            # # spins_Lb_ho_result /= np.trapz(spins_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
-            # # spins_Lb_ho_result /= np.trapz(spins_Lb_nho_result, x = lambda_vals_Lb, axis = 0)
-            
-            # # Gather the above results
-            # # results = [
-            # #     sgt_Lb_nho_result, sgt_Lb_ho_result,
-            # #     dsg_Lb_nho_result, dsg_Lb_ho_result,
-            # #     spins_Lb_nho_result, spins_Lb_ho_result
-            # # ]
-            
-            # loglike_list = [sgt_loglike_nho, sgt_loglike_ho, 
-            #                 dsg_loglike_nho, dsg_loglike_ho, 
-            #                 spins_loglike_nho, spins_loglike_ho]
-            
-            loglike_list.append(sgt_loglike_nho)
-            loglike_list.append(sgt_loglike_ho)
-            loglike_list.append(dsg_loglike_nho)
-            loglike_list.append(dsg_loglike_ho)
-            loglike_list.append(spins_loglike_nho)
-            loglike_list.append(spins_loglike_ho)
-            print(np.shape(loglike_list))
+                    # gp_post_ho_ray = ray.put(gp_post_dsg_ho)
+                    
+                    # log_like_ids = []
+                    # for i in range(0, len(mesh_cart), BATCH_SIZE):
+                    #     batch = mesh_cart[i : i + BATCH_SIZE]
+                    #     log_like_ids.append(log_likelihood.remote(gp_post_ho_ray, 
+                    #             orders_ho_ray, x_points_ray, ratio_points_ray, batch))
+                    # log_like = list(itertools.chain(*ray.get(log_like_ids)))
+                    # # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
+                    # dsg_loglike_ho += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                elif self.observable_name == "A" or self.observable_name == "AY" or \
+                    self.observable_name == "D" or self.observable_name == "AYY" or \
+                    self.observable_name == "AXX":
+                    posterior_label = r'$X_{pqik}$'
+                    
+                    x_points_ray = ray.put(-1. * np.cos(np.radians(degrees)))
+                    
+                    obs_loglike = np.zeros((len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                    spin_obs_list = [AY, A, D, AXX, AYY]
+                    
+                    for t_lab_Lb_loop in zip(t_lab_Lb, t_lab_Lb_prime):
+                        ratio_points_ray = ray.put(E_to_p(t_lab_Lb_loop[1], "np"))
+                        
+                        gp_fits_spins_nho = []
+                        # gp_fits_spins_ho = []
+                        
+                        for so, spin_obs in enumerate(spin_obs_list):
+                            spin_data = np.reshape((spin_obs[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+                            gp_fits_spins_nho.append(gm.TruncationGP(self.kernel, 
+                                                        ref = np.ones((len(degrees_Lb))), 
+                                                        ratio = interp_f_ratio_Lb_mpi, 
+                                                        center = self.center, 
+                                                        disp = self.disp, 
+                                                        df = self.df, 
+                                                        scale = self.std_est, 
+                                                        excluded = [0], 
+                                                        ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
+                                                                      "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                                                                    "Q_param" : self.Q_param, 
+                                                                    "mpi_var" : mpi_true,  
+                                                                    "lambda_var" : Lambda_b_true}))
+                            gp_fits_spins_nho[so].fit(degrees_Lb_prime[:, None],  
+                                                  spin_data.T, 
+                                                  orders = self.nn_orders_full, 
+                                                  orders_eval = self.nn_orders[:order])
+                            
+                        # for so, spin_obs in enumerate(spin_obs_list):
+                        #     spin_data = np.reshape((spin_obs[self.raw_data_mask, :])[:, np.isin(t_lab, t_lab_Lb_loop[0])][..., np.isin(degrees, degrees_Lb)], (len(self.nn_orders), -1))
+                        #     gp_fits_spins_nho.append(gm.TruncationGP(self.kernel, 
+                        #                                 ref = np.ones((len(degrees_Lb))), 
+                        #                                 ratio = interp_f_ratio_Lb_mpi, 
+                        #                                 center = self.center, 
+                        #                                 disp = self.disp, 
+                        #                                 df = self.df, 
+                        #                                 scale = self.std_est, 
+                        #                                 excluded = [0], 
+                        #                                 ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
+                        #                                               "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                        #                                             "Q_param" : self.Q_param, 
+                        #                                             "mpi_var" : mpi_true,  
+                        #                                             "lambda_var" : Lambda_b_true}))
+                        #     gp_fits_spins_nho[so].fit(degrees_Lb_prime[:, None],  
+                        #                           spin_data.T, 
+                        #                           orders = self.nn_orders_full, 
+                        #                           orders_eval = self.nn_orders[:len(self.nn_orders) - 1])
+                        #     gp_fits_spins_ho.append(gm.TruncationGP(self.kernel, 
+                        #                                 ref = np.ones((len(degrees_Lb))), 
+                        #                                 ratio = interp_f_ratio_Lb_mpi, 
+                        #                                 center = self.center, 
+                        #                                 disp = self.disp, 
+                        #                                 df = self.df, 
+                        #                                 scale = self.std_est, 
+                        #                                 excluded = [0], 
+                        #                                 ratio_kws = {"x_interp" : -1. * np.cos(np.radians(degrees)),
+                        #                                               "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                        #                                             "Q_param" : self.Q_param, 
+                        #                                             "mpi_var" : mpi_true,  
+                        #                                             "lambda_var" : Lambda_b_true}))
+                        #     gp_fits_spins_ho[so].fit(degrees_Lb_prime[:, None],  
+                        #                           spin_data.T, 
+                        #                           orders = self.nn_orders_full, 
+                        #                           orders_eval = self.nn_orders[:len(self.nn_orders)])
+                        
+                        for gp_fit_spins in gp_fits_spins_nho:
+                            # # evaluates the probability across the mesh
+                            # spins_loglike_nho += np.array([[[
+                            #     gp_fit_spins.log_marginal_likelihood([ls_,], 
+                            #                     orders_eval = self.nn_orders[:len(self.nn_orders) - 1],
+                            #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
+                            #                       "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                            #                       "Q_param" : self.Q_param, 
+                            #                       "mpi_var" : mpi_, 
+                            #                       "lambda_var" : lambda_})
+                            #         for mpi_ in mpi_vals]
+                            #         for ls_ in np.log(ls_vals)]
+                            #         for lambda_ in lambda_vals])
+                            gp_post_nho_ray = ray.put(gp_fit_spins)
+                            
+                            
+                            log_like_ids = []
+                            for i in range(0, len(mesh_cart), BATCH_SIZE):
+                                batch = mesh_cart[i : i + BATCH_SIZE]
+                                log_like_ids.append(log_likelihood.remote(gp_post_nho_ray, 
+                                        orders_nho_ray, x_points_ray, ratio_points_ray, batch))
+                            log_like = list(itertools.chain(*ray.get(log_like_ids)))
+                            # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
+                            obs_loglike += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                        
+                    
+                    # for gp_fit_spins in gp_fits_spins_ho:
+                    #     # # evaluates the probability across the mesh
+                    #     # spins_loglike_ho += np.array([[[
+                    #     #     gp_fit_spins.log_marginal_likelihood([ls_,], 
+                    #     #                     orders_eval = self.nn_orders[:len(self.nn_orders)],
+                    #     #                     **{"x_interp" : -1. * np.cos(np.radians(degrees)),
+                    #     #                       "x_interp_Q" : E_to_p(t_lab_Lb_loop[1], "np"), 
+                    #     #                       "Q_param" : self.Q_param, 
+                    #     #                       "mpi_var" : mpi_, 
+                    #     #                       "lambda_var" : lambda_})
+                    #     #         for mpi_ in mpi_vals]
+                    #     #         for ls_ in np.log(ls_vals)]
+                    #     #         for lambda_ in lambda_vals])
+                    #     gp_post_ho_ray = ray.put(gp_fit_spins)
+                        
+                    #     log_like_ids = []
+                    #     for i in range(0, len(mesh_cart), BATCH_SIZE):
+                    #         batch = mesh_cart[i : i + BATCH_SIZE]
+                    #         log_like_ids.append(log_likelihood.remote(gp_post_ho_ray, 
+                    #                 orders_ho_ray, x_points_ray, ratio_points_ray, batch))
+                    #     log_like = list(itertools.chain(*ray.get(log_like_ids)))
+                    #     # print(f"Time elapsed parallel: {time.time() - start_time:.2f}s")
+                    #     spins_loglike_ho += np.reshape(log_like, (len(lambda_vals), len(ls_vals), len(mpi_vals)))
+                    
+                # # # Normalize them
+                # # dsg_Lb_ho_result /= np.trapz(dsg_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
+                # # dsg_Lb_nho_result /= np.trapz(dsg_Lb_nho_result, x = lambda_vals_Lb, axis = 0)
+                # # spins_Lb_ho_result /= np.trapz(spins_Lb_ho_result, x = lambda_vals_Lb, axis = 0)
+                # # spins_Lb_ho_result /= np.trapz(spins_Lb_nho_result, x = lambda_vals_Lb, axis = 0)
+                
+                # # Gather the above results
+                # # results = [
+                # #     sgt_Lb_nho_result, sgt_Lb_ho_result,
+                # #     dsg_Lb_nho_result, dsg_Lb_ho_result,
+                # #     spins_Lb_nho_result, spins_Lb_ho_result
+                # # ]
+                
+                # loglike_list = [sgt_loglike_nho, sgt_loglike_ho, 
+                #                 dsg_loglike_nho, dsg_loglike_ho, 
+                #                 spins_loglike_nho, spins_loglike_ho]
+                
+                # loglike_list.append(sgt_loglike_nho)
+                # loglike_list.append(sgt_loglike_ho)
+                # loglike_list.append(dsg_loglike_nho)
+                # loglike_list.append(dsg_loglike_ho)
+                # loglike_list.append(spins_loglike_nho)
+                # loglike_list.append(spins_loglike_ho)
+                loglike_list.append(obs_loglike)
+                print(np.shape(loglike_list))
             
             for loglike in loglike_list:
                 # adds the log prior to the log likelihood
@@ -3224,17 +3360,17 @@ class GSUMDiagnostics:
             like_list = [np.exp(loglike - np.max(loglike)) for loglike in loglike_list]
             
             np.savetxt(data_filename_SGT_nho, 
-                       np.reshape(like_list[0], (len(lambda_vals) * len(ls_vals_Elab) * len(mpi_vals))))
+                       np.reshape(like_list[0], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
             np.savetxt(data_filename_SGT_ho, 
-                       np.reshape(like_list[1], (len(lambda_vals) * len(ls_vals_Elab) * len(mpi_vals))))
-            np.savetxt(data_filename_DSG_nho, 
-                       np.reshape(like_list[2], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
-            np.savetxt(data_filename_DSG_ho, 
-                       np.reshape(like_list[3], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
-            np.savetxt(data_filename_spins_nho, 
-                       np.reshape(like_list[4], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
-            np.savetxt(data_filename_spins_ho, 
-                       np.reshape(like_list[5], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
+                       np.reshape(like_list[1], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
+            # np.savetxt(data_filename_DSG_nho, 
+            #            np.reshape(like_list[2], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
+            # np.savetxt(data_filename_DSG_ho, 
+            #            np.reshape(like_list[3], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
+            # np.savetxt(data_filename_spins_nho, 
+            #            np.reshape(like_list[4], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
+            # np.savetxt(data_filename_spins_ho, 
+            #            np.reshape(like_list[5], (len(lambda_vals) * len(ls_vals) * len(mpi_vals))))
     
         # # Now compute the marginal distributions
         # lambda_like_nho = np.trapz(ls_lambda_like_nho, x = ls_vals_Lb, axis = -1)
@@ -3249,82 +3385,101 @@ class GSUMDiagnostics:
         # Now compute the marginal distributions
         sgt_lambda_post_nho = np.trapz(
             np.trapz(like_list[0], x = mpi_vals, axis = 2), 
-                x = ls_vals_Elab, axis = 1)
+                x = ls_vals, axis = 1)
         sgt_ls_post_nho = np.trapz(
             np.trapz(like_list[0], x = mpi_vals, axis = 2), 
                 x = lambda_vals, axis = 0)
         sgt_mpi_post_nho = np.trapz(
-            np.trapz(like_list[0], x = ls_vals_Elab, axis = 1), 
+            np.trapz(like_list[0], x = ls_vals, axis = 1), 
                 x = lambda_vals, axis = 0)
         sgt_lambda_post_ho = np.trapz(
             np.trapz(like_list[1], x = mpi_vals, axis = 2), 
-                x = ls_vals_Elab, axis = 1)
+                x = ls_vals, axis = 1)
         sgt_ls_post_ho = np.trapz(
             np.trapz(like_list[1], x = mpi_vals, axis = 2), 
                 x = lambda_vals, axis = 0)
         sgt_mpi_post_ho = np.trapz(
-            np.trapz(like_list[1], x = ls_vals_Elab, axis = 1), 
+            np.trapz(like_list[1], x = ls_vals, axis = 1), 
                 x = lambda_vals, axis = 0)
         
-        dsg_lambda_post_nho = np.trapz(
-            np.trapz(like_list[2], x = mpi_vals, axis = 2), 
-                x = ls_vals, axis = 1)
-        dsg_ls_post_nho = np.trapz(
-            np.trapz(like_list[2], x = mpi_vals, axis = 2), 
-                x = lambda_vals, axis = 0)
-        dsg_mpi_post_nho = np.trapz(
-            np.trapz(like_list[2], x = ls_vals, axis = 1), 
-                x = lambda_vals, axis = 0)
-        dsg_lambda_post_ho = np.trapz(
-            np.trapz(like_list[3], x = mpi_vals, axis = 2), 
-                x = ls_vals, axis = 1)
-        dsg_ls_post_ho = np.trapz(
-            np.trapz(like_list[3], x = mpi_vals, axis = 2), 
-                x = lambda_vals, axis = 0)
-        dsg_mpi_post_ho = np.trapz(
-            np.trapz(like_list[3], x = ls_vals, axis = 1), 
-                x = lambda_vals, axis = 0)
+        # sgt_lambda_post_nho = np.trapz(
+        #     np.trapz(like_list[0], x = mpi_vals, axis = 2), 
+        #         x = ls_vals_Elab, axis = 1)
+        # sgt_ls_post_nho = np.trapz(
+        #     np.trapz(like_list[0], x = mpi_vals, axis = 2), 
+        #         x = lambda_vals, axis = 0)
+        # sgt_mpi_post_nho = np.trapz(
+        #     np.trapz(like_list[0], x = ls_vals_Elab, axis = 1), 
+        #         x = lambda_vals, axis = 0)
+        # sgt_lambda_post_ho = np.trapz(
+        #     np.trapz(like_list[3], x = mpi_vals, axis = 2), 
+        #         x = ls_vals_Elab, axis = 1)
+        # sgt_ls_post_ho = np.trapz(
+        #     np.trapz(like_list[3], x = mpi_vals, axis = 2), 
+        #         x = lambda_vals, axis = 0)
+        # sgt_mpi_post_ho = np.trapz(
+        #     np.trapz(like_list[3], x = ls_vals_Elab, axis = 1), 
+        #         x = lambda_vals, axis = 0)
         
-        spins_lambda_post_nho = np.trapz(
-            np.trapz(like_list[4], x = mpi_vals, axis = 2), 
-                x = ls_vals, axis = 1)
-        spins_ls_post_nho = np.trapz(
-            np.trapz(like_list[4], x = mpi_vals, axis = 2), 
-                x = lambda_vals, axis = 0)
-        spins_mpi_post_nho = np.trapz(
-            np.trapz(like_list[4], x = ls_vals, axis = 1), 
-                x = lambda_vals, axis = 0)
-        spins_lambda_post_ho = np.trapz(
-            np.trapz(like_list[5], x = mpi_vals, axis = 2), 
-                x = ls_vals, axis = 1)
-        spins_ls_post_ho = np.trapz(
-            np.trapz(like_list[5], x = mpi_vals, axis = 2), 
-                x = lambda_vals, axis = 0)
-        spins_mpi_post_ho = np.trapz(
-            np.trapz(like_list[5], x = ls_vals, axis = 1), 
-                x = lambda_vals, axis = 0)
+        # dsg_lambda_post_nho = np.trapz(
+        #     np.trapz(like_list[1], x = mpi_vals, axis = 2), 
+        #         x = ls_vals, axis = 1)
+        # dsg_ls_post_nho = np.trapz(
+        #     np.trapz(like_list[1], x = mpi_vals, axis = 2), 
+        #         x = lambda_vals, axis = 0)
+        # dsg_mpi_post_nho = np.trapz(
+        #     np.trapz(like_list[1], x = ls_vals, axis = 1), 
+        #         x = lambda_vals, axis = 0)
+        # dsg_lambda_post_ho = np.trapz(
+        #     np.trapz(like_list[4], x = mpi_vals, axis = 2), 
+        #         x = ls_vals, axis = 1)
+        # dsg_ls_post_ho = np.trapz(
+        #     np.trapz(like_list[4], x = mpi_vals, axis = 2), 
+        #         x = lambda_vals, axis = 0)
+        # dsg_mpi_post_ho = np.trapz(
+        #     np.trapz(like_list[4], x = ls_vals, axis = 1), 
+        #         x = lambda_vals, axis = 0)
+        
+        # spins_lambda_post_nho = np.trapz(
+        #     np.trapz(like_list[2], x = mpi_vals, axis = 2), 
+        #         x = ls_vals, axis = 1)
+        # spins_ls_post_nho = np.trapz(
+        #     np.trapz(like_list[2], x = mpi_vals, axis = 2), 
+        #         x = lambda_vals, axis = 0)
+        # spins_mpi_post_nho = np.trapz(
+        #     np.trapz(like_list[2], x = ls_vals, axis = 1), 
+        #         x = lambda_vals, axis = 0)
+        # spins_lambda_post_ho = np.trapz(
+        #     np.trapz(like_list[5], x = mpi_vals, axis = 2), 
+        #         x = ls_vals, axis = 1)
+        # spins_ls_post_ho = np.trapz(
+        #     np.trapz(like_list[5], x = mpi_vals, axis = 2), 
+        #         x = lambda_vals, axis = 0)
+        # spins_mpi_post_ho = np.trapz(
+        #     np.trapz(like_list[5], x = ls_vals, axis = 1), 
+        #         x = lambda_vals, axis = 0)
     
         # Normalize them
         sgt_lambda_post_nho /= np.trapz(sgt_lambda_post_nho, x = lambda_vals, axis = 0)
-        sgt_ls_post_nho /= np.trapz(sgt_ls_post_nho, x = ls_vals_Elab, axis = 0)
+        sgt_ls_post_nho /= np.trapz(sgt_ls_post_nho, x = ls_vals, axis = 0)
         sgt_mpi_post_nho /= np.trapz(sgt_mpi_post_nho, x = mpi_vals, axis = 0)
         sgt_lambda_post_ho /= np.trapz(sgt_lambda_post_ho, x = lambda_vals, axis = 0)
-        sgt_ls_post_ho /= np.trapz(sgt_ls_post_ho, x = ls_vals_Elab, axis = 0)
+        sgt_ls_post_ho /= np.trapz(sgt_ls_post_ho, x = ls_vals, axis = 0)
         sgt_mpi_post_ho /= np.trapz(sgt_mpi_post_ho, x = mpi_vals, axis = 0)
         
-        dsg_lambda_post_nho /= np.trapz(dsg_lambda_post_nho, x = lambda_vals, axis = 0)
-        dsg_ls_post_nho /= np.trapz(dsg_ls_post_nho, x = ls_vals, axis = 0)
-        dsg_mpi_post_nho /= np.trapz(dsg_mpi_post_nho, x = mpi_vals, axis = 0)
-        dsg_lambda_post_ho /= np.trapz(dsg_lambda_post_ho, x = lambda_vals, axis = 0)
-        dsg_ls_post_ho /= np.trapz(dsg_ls_post_ho, x = ls_vals, axis = 0)
-        dsg_mpi_post_ho /= np.trapz(dsg_mpi_post_ho, x = mpi_vals, axis = 0)
+        # dsg_lambda_post_nho /= np.trapz(dsg_lambda_post_nho, x = lambda_vals, axis = 0)
+        # dsg_ls_post_nho /= np.trapz(dsg_ls_post_nho, x = ls_vals, axis = 0)
+        # dsg_mpi_post_nho /= np.trapz(dsg_mpi_post_nho, x = mpi_vals, axis = 0)
+        # dsg_lambda_post_ho /= np.trapz(dsg_lambda_post_ho, x = lambda_vals, axis = 0)
+        # dsg_ls_post_ho /= np.trapz(dsg_ls_post_ho, x = ls_vals, axis = 0)
+        # dsg_mpi_post_ho /= np.trapz(dsg_mpi_post_ho, x = mpi_vals, axis = 0)
         
-        spins_lambda_post_nho /= np.trapz(spins_lambda_post_nho, x = lambda_vals, axis = 0)
-        spins_ls_post_nho /= np.trapz(spins_ls_post_nho, x = ls_vals, axis = 0)
-        spins_mpi_post_nho /= np.trapz(spins_mpi_post_nho, x = mpi_vals, axis = 0)
-        spins_lambda_post_ho /= np.trapz(spins_lambda_post_ho, x = lambda_vals, axis = 0)
-        spins_ls_post_ho /= np.trapz(spins_ls_post_ho, x = ls_vals, axis = 0)
-        spins_mpi_post_ho /= np.trapz(spins_mpi_post_ho, x = mpi_vals, axis = 0)
+        # spins_lambda_post_nho /= np.trapz(spins_lambda_post_nho, x = lambda_vals, axis = 0)
+        # spins_ls_post_nho /= np.trapz(spins_ls_post_nho, x = ls_vals, axis = 0)
+        # spins_mpi_post_nho /= np.trapz(spins_mpi_post_nho, x = mpi_vals, axis = 0)
+        # spins_lambda_post_ho /= np.trapz(spins_lambda_post_ho, x = lambda_vals, axis = 0)
+        # spins_ls_post_ho /= np.trapz(spins_ls_post_ho, x = ls_vals, axis = 0)
+        # spins_mpi_post_ho /= np.trapz(spins_mpi_post_ho, x = mpi_vals, axis = 0)
             
         # # adds the log prior to the log likelihood
         # print(np.shape(np.swapaxes(np.tile( lambda_logprior, 
@@ -3618,9 +3773,9 @@ class GSUMDiagnostics:
         #                 dsg_mpi_nho_result, dsg_mpi_ho_result, 
         #                 spins_mpi_nho_result, spins_mpi_ho_result]
         results_joint_lambdampi = [np.trapz(dist, x = ls_vals, axis = 1) for dist in like_list]
-        for dist_idx, dist in enumerate(like_list):
-            if dist_idx == 0 or dist_idx == 1:
-                results_joint_lambdampi[dist_idx] = np.trapz(dist, x = ls_vals_Elab, axis = 1)
+        # for dist_idx, dist in enumerate(like_list):
+        #     if dist_idx == 0 or dist_idx == 1:
+        #         results_joint_lambdampi[dist_idx] = np.trapz(dist, x = ls_vals, axis = 1)
         results_joint_lslambda = [np.trapz(dist, x = mpi_vals, axis = 2).T for dist in like_list]
         results_joint_lsmpi = [np.trapz(dist, x = lambda_vals, axis = 0) for dist in like_list]
         
@@ -3632,41 +3787,25 @@ class GSUMDiagnostics:
         results_joint_lslambda = [dist / np.amax(dist) for dist in results_joint_lslambda]
         results_joint_lsmpi = [dist / np.amax(dist) for dist in results_joint_lsmpi]
         
-        results_lambda = [sgt_lambda_post_nho, sgt_lambda_post_ho, 
-                          dsg_lambda_post_nho, dsg_lambda_post_ho, 
-                          spins_lambda_post_nho, spins_lambda_post_ho]
-        results_ls = [sgt_ls_post_nho, sgt_ls_post_ho, 
-                          dsg_ls_post_nho, dsg_ls_post_ho, 
-                          spins_ls_post_nho, spins_ls_post_ho]
-        results_mpi = [sgt_mpi_post_nho, sgt_mpi_post_ho, 
-                          dsg_mpi_post_nho, dsg_mpi_post_ho, 
-                          spins_mpi_post_nho, spins_mpi_post_ho]
+        results_lambda = [sgt_lambda_post_nho, sgt_lambda_post_ho]
+        results_ls = [sgt_ls_post_nho, sgt_ls_post_ho]
+        results_mpi = [sgt_mpi_post_nho, sgt_mpi_post_ho]
+        
+        # results_lambda = [sgt_lambda_post_nho, sgt_lambda_post_ho, 
+        #                   dsg_lambda_post_nho, dsg_lambda_post_ho, 
+        #                   spins_lambda_post_nho, spins_lambda_post_ho]
+        # results_ls = [sgt_ls_post_nho, sgt_ls_post_ho, 
+        #                   dsg_ls_post_nho, dsg_ls_post_ho, 
+        #                   spins_ls_post_nho, spins_ls_post_ho]
+        # results_mpi = [sgt_mpi_post_nho, sgt_mpi_post_ho, 
+        #                   dsg_mpi_post_nho, dsg_mpi_post_ho, 
+        #                   spins_mpi_post_nho, spins_mpi_post_ho]
         # results_lambda = [sgt_Lb_nho_result, sgt_Lb_ho_result, 
         #                   dsg_Lb_nho_result, dsg_Lb_ho_result]
         # results_mpi = [sgt_mpi_nho_result, sgt_mpi_ho_result, 
         #                dsg_mpi_nho_result, dsg_mpi_ho_result]
         
-        # for i, (posterior, bounds, median) in enumerate(results):
-        order_num = 2
-        obs_num = 3
         
-        LambdabVariable = RandomVariable(var = lambda_vals, 
-                                         name = 'Lambdab', 
-                                         label = "\Lambda_{b}", 
-                                         units = "MeV", 
-                                         ticks = [300, 600, 900, 1200])
-        # this will need to change for SGT vs. other observables
-        LsVariable = RandomVariable(var = ls_vals, 
-                                         name = 'ls', 
-                                         label = "\ell", 
-                                         units = "", 
-                                         ticks = [])
-        MpieffVariable = RandomVariable(var = mpi_vals, 
-                                         name = 'mpieff', 
-                                         label = "m_{\pi}", 
-                                         units = "MeV", 
-                                         ticks = [50, 100, 150, 200, 250, 300, 350])
-        variables_array = np.array([LambdabVariable, LsVariable, MpieffVariable])
         
         results_array = np.array([results_lambda, results_ls, results_mpi])
         
@@ -3706,10 +3845,11 @@ class GSUMDiagnostics:
             
             # Plot formatting
             # print(np.arange(0, -1 * order_num * len(results_lambda) / obs_num - 0.1, -1 * order_num))
-            ax.set_yticks(np.arange(0, -1 * order_num * len(results_lambda) / obs_num - 0.1, -1 * order_num))
+            # ax.set_yticks(np.arange(0, -1 * order_num * len(results_lambda) / obs_num - 0.1, -1 * order_num))
             # print(-1.1 + np.arange(0, -1 * (order_num - 1) * len(results_lambda) / obs_num - 0.1, -1 * order_num))
-            ax.set_yticks(-1.1 + np.arange(0, -1 * (order_num - 1) * len(results_lambda) / obs_num - 0.1, -1 * order_num), minor=True)
-            ax.set_yticklabels([r'$\sigma$', r'$\displaystyle\frac{d\sigma}{d\Omega}$', r'$X_{pqik}$'])
+            # ax.set_yticks(-1.1 + np.arange(0, -1 * (order_num - 1) * len(results_lambda) / obs_num - 0.1, -1 * order_num), minor=True)
+            ax.set_yticks([0])
+            ax.set_yticklabels([posterior_label])
             ax.tick_params(axis='both', which='both', direction='in')
             ax.tick_params(which='major', length=0)
             ax.tick_params(which='minor', length=7, right=True)
@@ -4058,206 +4198,206 @@ class GSUMDiagnostics:
         #                                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
         #                                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
             
-            if whether_plot_corner:
-                with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
-                    cmap_name = 'Blues'
-                    cmap = mpl.cm.get_cmap(cmap_name)
+        if whether_plot_corner:
+            with plt.rc_context({"text.usetex": True, "text.latex.preview": True}):
+                cmap_name = 'Blues'
+                cmap = mpl.cm.get_cmap(cmap_name)
+                
+                for i in range(order_num * obs_num):
+                    # Setup axes
+    #                 if ax_joint == None and ax_marg_x == None and ax_marg_y == None:
+                    n_plots = np.shape(variables_array)[0]
+                    # print(np.shape(variables_array))
+                    # print("There are " + str(n_plots) + " plots.")
+                    fig, ax_joint_array, ax_marg_array, ax_title = corner_plot(n_plots = n_plots)
                     
-                    for i in range(order_num * obs_num):
-                        # Setup axes
-        #                 if ax_joint == None and ax_marg_x == None and ax_marg_y == None:
-                        n_plots = np.shape(variables_array)[0]
-                        # print(np.shape(variables_array))
-                        # print("There are " + str(n_plots) + " plots.")
-                        fig, ax_joint_array, ax_marg_array, ax_title = corner_plot(n_plots = n_plots)
+                    # if i == 0 or i == 1:
+                    #     ls_vals_corner = ls_vals_Elab
+                    # else:
+                    #     ls_vals_corner = ls_vals
                         
-                        if i == 0 or i == 1:
-                            ls_vals_corner = ls_vals_Elab
-                        else:
-                            ls_vals_corner = ls_vals
-                            
-                        mean_list = []
-                        stddev_list = []
-                        
-                        for variable_idx, variable in enumerate(np.roll(variables_array, 1)):
-                            # Now plot the marginal distributions
-                            print(len(variable.var))
-                            print(np.shape(results_array[variable_idx, i]))
-                            dist_mean, dist_stddev = mean_and_stddev(variable.var, results_array[variable_idx - 1, i])
-                            # print(variable_idx)
-                            # print(len(ax_marg_array))
-                            ax_marg_array[variable_idx].set_xlim(left = np.max([0, dist_mean - 5 * dist_stddev]), 
-                                                                 right = dist_mean + 5 * dist_stddev)
-                            mean_list.append(dist_mean)
-                            stddev_list.append(dist_stddev)
-                            dist_mean = sig_figs(dist_mean, 3)
-                            dist_stddev = round_to_same_digits(dist_stddev, dist_mean)
-                            ax_marg_array[variable_idx].set_title(rf'{dist_mean} $\pm$ {dist_stddev}', 
-                                                            fontsize = 18)
-                            
-                            ax_marg_array[variable_idx].plot(variable.var, results_array[variable_idx - 1, i], c=cmap(0.8), lw=1)
-                            ax_marg_array[variable_idx].fill_between(variable.var, np.zeros_like(variable.var),
-                                                    results_array[variable_idx - 1, i], facecolor=cmap(0.2), lw=1)
-                            try:
-                                ax_marg_array[variable_idx].axvline(np.roll(variables_true_list, 1)[variable_idx], 0, 1, c=gray, lw=1, zorder=0)
-                            except:
-                                pass
-                            if variable_idx == np.shape(variables_array)[0] - 1:
-                                ax_marg_array[variable_idx].set_xticklabels(variable.ticks)
-                        
-                        comb_array = np.array(np.meshgrid(np.arange(0, np.shape(variables_array)[0], 1, dtype = int), 
-                                                          np.arange(0, np.shape(variables_array)[0], 1, dtype = int))).T.reshape(-1, 2)
-                        # print(comb_array)
-                        comb_array = np.delete(comb_array, [comb[0] >= comb[1] for comb in comb_array], axis = 0)
-                        # print(comb_array)
-                        p = np.argsort(comb_array[:, 1])
-                        # print(p)
-                        comb_array = comb_array[p]
-                        
-                        for joint_idx, joint in enumerate(results_joint_array[:, i]):
-                            # Plot contour
-                            # ax_joint_array[0].contour(mpi_vals, lambda_vals, posterior[0],
-                            #                   levels = [np.amax(posterior[0]) * level for level in \
-                            #                             ([np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
-                            #                   cmap=cmap_name, vmin=0.3, vmax=1.0, zorder=1)
-                            ax_joint_array[joint_idx].set_xlim(left = np.max([0, mean_list[comb_array[joint_idx, 0]] - 5 * stddev_list[comb_array[joint_idx, 0]]]), 
-                                                               right = mean_list[comb_array[joint_idx, 0]] + 5 * stddev_list[comb_array[joint_idx, 0]])
-                            ax_joint_array[joint_idx].set_ylim(bottom = np.max([0, mean_list[comb_array[joint_idx, 1]] - 5 * stddev_list[comb_array[joint_idx, 1]]]), 
-                                                               top = mean_list[comb_array[joint_idx, 1]] + 5 * stddev_list[comb_array[joint_idx, 1]])
-                            try:
-                                ax_joint_array[joint_idx].contour(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
-                                                                  np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
-                                                                  joint,
-                                                  levels = [np.amax(joint) * level for level in \
-                                                            ([np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
-                                                  cmap=cmap_name)
-                                corr_coeff = correlation_coefficient(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
-                                                                     np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
-                                                                     joint)
-                            except:
-                                ax_joint_array[joint_idx].contour(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
-                                                                  np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
-                                                                  joint.T,
-                                                  levels = [np.amax(joint.T) * level for level in \
-                                                            ([np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
-                                                  cmap=cmap_name)
-                                corr_coeff = correlation_coefficient(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
-                                                                     np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
-                                                                     joint.T)
-                            ax_joint_array[joint_idx].text(.99, .99, rf'$\rho$ = {corr_coeff:.2f}', 
-                                                        ha='right', va='top', 
-                                                        transform = ax_joint_array[joint_idx].transAxes, 
+                    mean_list = []
+                    stddev_list = []
+                    
+                    for variable_idx, variable in enumerate(np.roll(variables_array, 1)):
+                        # Now plot the marginal distributions
+                        print(len(variable.var))
+                        print(np.shape(results_array[variable_idx, i]))
+                        dist_mean, dist_stddev = mean_and_stddev(variable.var, results_array[variable_idx - 1, i])
+                        # print(variable_idx)
+                        # print(len(ax_marg_array))
+                        ax_marg_array[variable_idx].set_xlim(left = np.max([0, dist_mean - 5 * dist_stddev]), 
+                                                             right = dist_mean + 5 * dist_stddev)
+                        mean_list.append(dist_mean)
+                        stddev_list.append(dist_stddev)
+                        dist_mean = sig_figs(dist_mean, 3)
+                        dist_stddev = round_to_same_digits(dist_stddev, dist_mean)
+                        ax_marg_array[variable_idx].set_title(rf'{dist_mean} $\pm$ {dist_stddev}', 
                                                         fontsize = 18)
-                            try:
-                                ax_joint_array[joint_idx].axvline(np.roll(variables_true_list, 1)[comb_array[joint_idx, 0]], 0, 1, c=gray, lw=1, zorder=0)
-                            except:
-                                pass
-                            try:
-                                ax_joint_array[joint_idx].axhline(np.roll(variables_true_list, 1)[comb_array[joint_idx, 1]], 0, 1, c=gray, lw=1, zorder=0)
-                            except:
-                                pass
-                                             
                         
-                        # # sets the x labels for the last marginalized distribution
-                        # ax_marg_array[-1].set_xticks(ax_joint_array[1 - n_plots].get_yticks())
-                        # rotated_ticklabels = []
-                        # for text in ax_joint_array[1 - n_plots].get_yticklabels():
-                        #     Y = text._y
-                        #     rotated_ticklabels.append(Text(x = Y, y = 0.0, text = f'{Y:.1f}'))
-                        # print(rotated_ticklabels)
-                        # ax_marg_array[-1].set_xticklabels(rotated_ticklabels)
-    
-                        # Formatting
-                        # ax_joint_array[0].set_ylabel(r'$\Lambda_{b}$ (MeV)')
-                        # ax_joint_array[1].set_xlabel(r'$m_{\pi}$ (MeV)')
-                        # ax_joint_array[1].set_ylabel(r'$\ell$')
-                        # ax_joint_array[2].set_xlabel(r'$\Lambda_{b}$ (MeV)')
-                        
-                        # ax_joint_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
-                        # ax_joint_array[1].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
-                        # ax_joint_array[2].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
-                        # ax_marg_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
-                        # ax_marg_array[1].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
-                        
-                        # ax_joint_array[0].axhline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
-                        
-                        if i == 0 or i == 1:
-                            ax_title.text(.99, .99, 
-                                    'SGT' + '\n' + 
-                                    self.scheme + '\,' + self.scale + '\n' + 
-                                    r'' + self.orders_labels_dict[max(self.nn_orders) - 1 + (i % 2)] + '\n' + 
-                                    r'$Q_{\mathrm{' + self.Q_param + '}}$' + '\n' + 
-                                    self.p_param + '\n' + 
-                                    self.vs_what,
-                                    ha='right', va='top', 
-                                    transform = ax_title.transAxes, 
-                                    fontsize = 25)
-                        if i == 2 or i == 3:
-                            ax_title.text(.99, .99, 
-                                    'DSG' + '\n' + 
-                                    self.scheme + '\,' + self.scale + '\n' + 
-                                    r'' + self.orders_labels_dict[max(self.nn_orders) - 1 + (i % 2)] + '\n' + 
-                                    r'$Q_{\mathrm{' + self.Q_param + '}}$' + '\n' + 
-                                    self.p_param + '\n' + 
-                                    self.vs_what,
-                                    ha='right', va='top', 
-                                    transform = ax_title.transAxes, 
-                                    fontsize = 25)
-                        if i == 4 or i == 5:
-                            ax_title.text(.99, .99, 
-                                    'spins' + '\n' + 
-                                    self.scheme + '\,' + self.scale + '\n' + 
-                                    r'' + self.orders_labels_dict[max(self.nn_orders) - 1 + (i % 2)] + '\n' + 
-                                    r'$Q_{\mathrm{' + self.Q_param + '}}$' + '\n' + 
-                                    self.p_param + '\n' + 
-                                    self.vs_what,
-                                    ha='right', va='top', 
-                                    transform = ax_title.transAxes, 
-                                    fontsize = 25)
-                        
-                        # ax_joint.margins(x=0, y=0.)
-                        # ax_joint.set_xlim(min(mpi_vals), max(mpi_vals))
-                        # ax_joint.set_ylim(min(lambda_vals), max(lambda_vals))
-                        # ax_marg_x.set_ylim(bottom=0);
-                        # ax_marg_y.set_xlim(left=0);
-                        # ax_joint.text(0.95, 0.95, r'pr$(m_{\pi}, \Lambda_{b} \,|\, \vec{\mathbf{y}}_k, \ell)$', ha='right', va='top',
-                        #               transform=ax_joint.transAxes,
-                        #               bbox=text_bbox
-                        #               )
-                        plt.show()
-                        
-                        # if 'fig' in locals() and whether_save:
-                        #     fig.tight_layout()
-                        #     if posterior_idx == 0:
-                        #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-                        #             'SGT_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-                        #                 self.scale + '_' + 'nho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
-                        #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
-                        #     elif posterior_idx == 2:
-                        #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-                        #             'DSG_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-                        #                 self.scale + '_' + 'nho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
-                        #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
-                        #     elif posterior_idx == 4:
-                        #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-                        #             'spin_observables_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-                        #                 self.scale + '_' + 'nho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
-                        #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
-                        #     elif posterior_idx == 1:
-                        #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-                        #             'SGT_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-                        #                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
-                        #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
-                        #     elif posterior_idx == 3:
-                        #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-                        #             'DSG_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-                        #                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
-                        #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
-                        #     elif posterior_idx == 5:
-                        #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
-                        #             'spin_observables_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
-                        #                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
-                        #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
+                        ax_marg_array[variable_idx].plot(variable.var, results_array[variable_idx - 1, i], c=cmap(0.8), lw=1)
+                        ax_marg_array[variable_idx].fill_between(variable.var, np.zeros_like(variable.var),
+                                                results_array[variable_idx - 1, i], facecolor=cmap(0.2), lw=1)
+                        try:
+                            ax_marg_array[variable_idx].axvline(np.roll(variables_true_list, 1)[variable_idx], 0, 1, c=gray, lw=1, zorder=0)
+                        except:
+                            pass
+                        if variable_idx == np.shape(variables_array)[0] - 1:
+                            ax_marg_array[variable_idx].set_xticklabels(variable.ticks)
+                    
+                    comb_array = np.array(np.meshgrid(np.arange(0, np.shape(variables_array)[0], 1, dtype = int), 
+                                                      np.arange(0, np.shape(variables_array)[0], 1, dtype = int))).T.reshape(-1, 2)
+                    # print(comb_array)
+                    comb_array = np.delete(comb_array, [comb[0] >= comb[1] for comb in comb_array], axis = 0)
+                    # print(comb_array)
+                    p = np.argsort(comb_array[:, 1])
+                    # print(p)
+                    comb_array = comb_array[p]
+                    
+                    for joint_idx, joint in enumerate(results_joint_array[:, i]):
+                        # Plot contour
+                        # ax_joint_array[0].contour(mpi_vals, lambda_vals, posterior[0],
+                        #                   levels = [np.amax(posterior[0]) * level for level in \
+                        #                             ([np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
+                        #                   cmap=cmap_name, vmin=0.3, vmax=1.0, zorder=1)
+                        ax_joint_array[joint_idx].set_xlim(left = np.max([0, mean_list[comb_array[joint_idx, 0]] - 5 * stddev_list[comb_array[joint_idx, 0]]]), 
+                                                           right = mean_list[comb_array[joint_idx, 0]] + 5 * stddev_list[comb_array[joint_idx, 0]])
+                        ax_joint_array[joint_idx].set_ylim(bottom = np.max([0, mean_list[comb_array[joint_idx, 1]] - 5 * stddev_list[comb_array[joint_idx, 1]]]), 
+                                                           top = mean_list[comb_array[joint_idx, 1]] + 5 * stddev_list[comb_array[joint_idx, 1]])
+                        try:
+                            ax_joint_array[joint_idx].contour(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
+                                                              np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
+                                                              joint,
+                                              levels = [np.amax(joint) * level for level in \
+                                                        ([np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
+                                              cmap=cmap_name)
+                            corr_coeff = correlation_coefficient(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
+                                                                 np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
+                                                                 joint)
+                        except:
+                            ax_joint_array[joint_idx].contour(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
+                                                              np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
+                                                              joint.T,
+                                              levels = [np.amax(joint.T) * level for level in \
+                                                        ([np.exp(-0.5*r**2) for r in np.arange(9, 0, -0.5)] + [0.999])],
+                                              cmap=cmap_name)
+                            corr_coeff = correlation_coefficient(np.roll(variables_array, 1)[comb_array[joint_idx, 0]].var, 
+                                                                 np.roll(variables_array, 1)[comb_array[joint_idx, 1]].var, 
+                                                                 joint.T)
+                        ax_joint_array[joint_idx].text(.99, .99, rf'$\rho$ = {corr_coeff:.2f}', 
+                                                    ha='right', va='top', 
+                                                    transform = ax_joint_array[joint_idx].transAxes, 
+                                                    fontsize = 18)
+                        try:
+                            ax_joint_array[joint_idx].axvline(np.roll(variables_true_list, 1)[comb_array[joint_idx, 0]], 0, 1, c=gray, lw=1, zorder=0)
+                        except:
+                            pass
+                        try:
+                            ax_joint_array[joint_idx].axhline(np.roll(variables_true_list, 1)[comb_array[joint_idx, 1]], 0, 1, c=gray, lw=1, zorder=0)
+                        except:
+                            pass
+                                         
+                    
+                    # # sets the x labels for the last marginalized distribution
+                    # ax_marg_array[-1].set_xticks(ax_joint_array[1 - n_plots].get_yticks())
+                    # rotated_ticklabels = []
+                    # for text in ax_joint_array[1 - n_plots].get_yticklabels():
+                    #     Y = text._y
+                    #     rotated_ticklabels.append(Text(x = Y, y = 0.0, text = f'{Y:.1f}'))
+                    # print(rotated_ticklabels)
+                    # ax_marg_array[-1].set_xticklabels(rotated_ticklabels)
+
+                    # Formatting
+                    # ax_joint_array[0].set_ylabel(r'$\Lambda_{b}$ (MeV)')
+                    # ax_joint_array[1].set_xlabel(r'$m_{\pi}$ (MeV)')
+                    # ax_joint_array[1].set_ylabel(r'$\ell$')
+                    # ax_joint_array[2].set_xlabel(r'$\Lambda_{b}$ (MeV)')
+                    
+                    # ax_joint_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
+                    # ax_joint_array[1].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
+                    # ax_joint_array[2].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
+                    # ax_marg_array[0].axvline(mpi_true, 0, 1, c=gray, lw=1, zorder=0)
+                    # ax_marg_array[1].axvline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
+                    
+                    # ax_joint_array[0].axhline(Lambda_b_true, 0, 1, c=gray, lw=1, zorder=0)
+                    
+                    if i == 0 or i == 1:
+                        ax_title.text(.99, .99, 
+                                'SGT' + '\n' + 
+                                self.scheme + '\,' + self.scale + '\n' + 
+                                r'' + self.orders_labels_dict[max(self.nn_orders) - 1 + (i % 2)] + '\n' + 
+                                r'$Q_{\mathrm{' + self.Q_param + '}}$' + '\n' + 
+                                self.p_param + '\n' + 
+                                self.vs_what,
+                                ha='right', va='top', 
+                                transform = ax_title.transAxes, 
+                                fontsize = 25)
+                    if i == 2 or i == 3:
+                        ax_title.text(.99, .99, 
+                                'DSG' + '\n' + 
+                                self.scheme + '\,' + self.scale + '\n' + 
+                                r'' + self.orders_labels_dict[max(self.nn_orders) - 1 + (i % 2)] + '\n' + 
+                                r'$Q_{\mathrm{' + self.Q_param + '}}$' + '\n' + 
+                                self.p_param + '\n' + 
+                                self.vs_what,
+                                ha='right', va='top', 
+                                transform = ax_title.transAxes, 
+                                fontsize = 25)
+                    if i == 4 or i == 5:
+                        ax_title.text(.99, .99, 
+                                'spins' + '\n' + 
+                                self.scheme + '\,' + self.scale + '\n' + 
+                                r'' + self.orders_labels_dict[max(self.nn_orders) - 1 + (i % 2)] + '\n' + 
+                                r'$Q_{\mathrm{' + self.Q_param + '}}$' + '\n' + 
+                                self.p_param + '\n' + 
+                                self.vs_what,
+                                ha='right', va='top', 
+                                transform = ax_title.transAxes, 
+                                fontsize = 25)
+                    
+                    # ax_joint.margins(x=0, y=0.)
+                    # ax_joint.set_xlim(min(mpi_vals), max(mpi_vals))
+                    # ax_joint.set_ylim(min(lambda_vals), max(lambda_vals))
+                    # ax_marg_x.set_ylim(bottom=0);
+                    # ax_marg_y.set_xlim(left=0);
+                    # ax_joint.text(0.95, 0.95, r'pr$(m_{\pi}, \Lambda_{b} \,|\, \vec{\mathbf{y}}_k, \ell)$', ha='right', va='top',
+                    #               transform=ax_joint.transAxes,
+                    #               bbox=text_bbox
+                    #               )
+                    plt.show()
+                    
+                    # if 'fig' in locals() and whether_save:
+                    #     fig.tight_layout()
+                    #     if posterior_idx == 0:
+                    #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    #             'SGT_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                    #                 self.scale + '_' + 'nho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
+                    #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    #     elif posterior_idx == 2:
+                    #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    #             'DSG_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                    #                 self.scale + '_' + 'nho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
+                    #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    #     elif posterior_idx == 4:
+                    #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    #             'spin_observables_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                    #                 self.scale + '_' + 'nho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
+                    #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    #     elif posterior_idx == 1:
+                    #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    #             'SGT_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                    #                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
+                    #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    #     elif posterior_idx == 3:
+                    #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    #             'DSG_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                    #                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
+                    #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
+                    #     elif posterior_idx == 5:
+                    #         fig.savefig(('figures/' + self.scheme + '_' + self.scale + '/' + 
+                    #             'spin_observables_corner_posterior_pdf_curvewise' + '_' + self.scheme + '_' + 
+                    #                 self.scale + '_' + 'ho' + '_Q' + self.Q_param + '_' + self.p_param + '_' + 
+                    #                 self.vs_what + self.filename_addendum).replace('_0MeVlab_', '_'))
             
             # except:
             #     print("Error in plotting the curvewise posterior PDF.")
