@@ -23,9 +23,12 @@ from ChEFT_GP_imports_forked import (
     E_to_p,
     Q_approx,
     p_approx,
+    deg_fn,
+    neg_cos,
     deg_to_qcm,
     deg_to_qcm2,
     sin_thing,
+    Elab_fn,
     softmax_mom,
     GPHyperparameters,
     FileNaming,
@@ -642,7 +645,8 @@ def gp_analysis(
                     # creates the bunches for the vs-angle input spaces
                     DegBunch = InputSpaceBunch(
                         "deg",
-                        lambda x: x,
+                        # lambda x: x,
+                        deg_fn,
                         p_approx(PParamMethod, E_to_p(E_lab, "np"), degrees),
                         r"$\theta$ (deg)",
                         [
@@ -655,7 +659,8 @@ def gp_analysis(
                     )
                     CosBunch = InputSpaceBunch(
                         "cos",
-                        lambda x: -np.cos(np.radians(x)),
+                        # lambda x: -np.cos(np.radians(x)),
+                        neg_cos,
                         p_approx(PParamMethod, E_to_p(E_lab, "np"), degrees),
                         r"$-\mathrm{cos}(\theta)$",
                         [
@@ -681,7 +686,8 @@ def gp_analysis(
                     )
                     QcmBunch = InputSpaceBunch(
                         "qcm",
-                        lambda x: deg_to_qcm(E_to_p(E_lab, "np"), x),
+                        # lambda x: deg_to_qcm(E_to_p(E_lab, "np"), x),
+                        deg_to_qcm,
                         p_approx(PParamMethod, E_to_p(E_lab, "np"), degrees),
                         r"$q_{\mathrm{cm}}$ (MeV)",
                         [
@@ -694,7 +700,8 @@ def gp_analysis(
                     )
                     Qcm2Bunch = InputSpaceBunch(
                         "qcm2",
-                        lambda x: deg_to_qcm2(E_to_p(E_lab, "np"), x),
+                        # lambda x: deg_to_qcm2(E_to_p(E_lab, "np"), x),
+                        deg_to_qcm2,
                         p_approx(PParamMethod, E_to_p(E_lab, "np"), degrees),
                         r"$q_{\mathrm{cm}}^{2}$ (MeV$^{2}$)",
                         [
@@ -732,13 +739,17 @@ def gp_analysis(
                             # length
                             MyPosteriorBounds = PosteriorBounds(
                                 (
-                                    max(VsQuantity.input_space(degrees))
-                                    - min(VsQuantity.input_space(degrees))
+                                    max(VsQuantity.input_space(**{"deg_input" : degrees, 
+                                                              "p_input" : E_to_p(E_lab, "np")}))
+                                    - min(VsQuantity.input_space(**{"deg_input" : degrees, 
+                                                              "p_input" : E_to_p(E_lab, "np")}))
                                 )
                                 / 9,
                                 (
-                                    max(VsQuantity.input_space(degrees))
-                                    - min(VsQuantity.input_space(degrees))
+                                    max(VsQuantity.input_space(**{"deg_input" : degrees, 
+                                                              "p_input" : E_to_p(E_lab, "np")}))
+                                    - min(VsQuantity.input_space(**{"deg_input" : degrees, 
+                                                              "p_input" : E_to_p(E_lab, "np")}))
                                 )
                                 / 2,
                                 100,
@@ -752,14 +763,17 @@ def gp_analysis(
                             ):
                                 # conforms the training and testing masks to each input space
                                 TrainingTestingSplit.make_masks(
-                                    VsQuantity.input_space(degrees), Observable.data
+                                    VsQuantity.input_space(**{"deg_input" : degrees, 
+                                                              "p_input" : E_to_p(E_lab, "np")}), 
+                                    Observable.data
                                 )
                                 # print("data = " + str(observable.data))
 
                                 # chooses a starting guess for the GP length scale optimization procedure
                                 LengthScaleGuess = length_scale_input
                                 LengthScaleGuess.make_guess(
-                                    VsQuantity.input_space(degrees)
+                                    VsQuantity.input_space(**{"deg_input" : degrees, 
+                                                              "p_input" : E_to_p(E_lab, "np")})
                                 )
 
                                 # creates the GP with all its hyperparameters
@@ -866,7 +880,7 @@ def gp_analysis(
                                     #                            t_lab = t_lab,
                                     #                            degrees = degrees,
                                     #                            whether_save = save_lambdapost_curvewise_bool)
-                                    MyPlot.plot_lambda_mpi_posterior_curvewise(
+                                    MyPlot.plot_posteriors_curvewise(
                                         SGT=SGT,
                                         DSG=DSG,
                                         AY=AY,
@@ -875,7 +889,9 @@ def gp_analysis(
                                         AXX=AXX,
                                         AYY=AYY,
                                         t_lab=t_lab,
+                                        t_lab_pts=np.array([5, 21, 48, 85, 133, 192]),
                                         degrees=degrees,
+                                        degrees_pts=np.array([26, 51, 77, 103, 129, 154]),
                                         Lambda_b_true=Lambdab,
                                         ls_true = None, 
                                         mpi_true=m_pi_eff,
@@ -888,7 +904,8 @@ def gp_analysis(
                     # creates the bunches for the vs-energy input spaces
                     ElabBunch = InputSpaceBunch(
                         "Elab",
-                        lambda x: x,
+                        # lambda x: x,
+                        Elab_fn,
                         p_approx("Qofprel", E_to_p(t_lab, "np"), degrees),
                         r"$E_{\mathrm{lab}}$ (MeV)",
                         [r"$", Observable.title, r"(E_{\mathrm{lab}})$"],
@@ -896,7 +913,8 @@ def gp_analysis(
 
                     PrelBunch = InputSpaceBunch(
                         "prel",
-                        lambda x: E_to_p(x, "np"),
+                        # lambda x: E_to_p(x, "np"),
+                        E_to_p,
                         p_approx("Qofprel", E_to_p(t_lab, "np"), degrees),
                         r"$p_{\mathrm{rel}}$ (MeV)",
                         [r"$", Observable.title, r"(p_{\mathrm{rel}})$"],
@@ -921,13 +939,13 @@ def gp_analysis(
                             # length
                             MyPosteriorBounds = PosteriorBounds(
                                 (
-                                    max(VsQuantity.input_space(t_lab))
-                                    - min(VsQuantity.input_space(t_lab))
+                                    max(VsQuantity.input_space(**{"E_lab" : t_lab}))
+                                    - min(VsQuantity.input_space(**{"E_lab" : t_lab}))
                                 )
                                 / 9,
                                 (
-                                    max(VsQuantity.input_space(t_lab))
-                                    - min(VsQuantity.input_space(t_lab))
+                                    max(VsQuantity.input_space(**{"E_lab" : t_lab}))
+                                    - min(VsQuantity.input_space(**{"E_lab" : t_lab}))
                                 )
                                 / 2,
                                 100,
@@ -942,18 +960,18 @@ def gp_analysis(
                                 # conforms the training and testing masks to each input space
                                 try:
                                     TrainingTestingSplit.make_masks(
-                                        VsQuantity.input_space(t_lab),
+                                        VsQuantity.input_space(**{"E_lab" : t_lab}),
                                         Observable.data.swapaxes(1, 2),
                                     )
                                 except:
                                     TrainingTestingSplit.make_masks(
-                                        VsQuantity.input_space(t_lab), Observable.data
+                                        VsQuantity.input_space(**{"E_lab" : t_lab}), Observable.data
                                     )
 
                                 # chooses a starting guess for the GP length scale optimization procedure
                                 LengthScaleGuess = length_scale_input
                                 LengthScaleGuess.make_guess(
-                                    VsQuantity.input_space(t_lab)
+                                    VsQuantity.input_space(**{"E_lab" : t_lab})
                                 )
 
                                 # creates the GP with all its hyperparameters
@@ -1052,7 +1070,7 @@ def gp_analysis(
                                     #                            t_lab = t_lab,
                                     #                            degrees = degrees,
                                     #                            whether_save = save_lambdapost_curvewise_bool)
-                                    MyPlot.plot_lambda_mpi_posterior_curvewise(
+                                    MyPlot.plot_posteriors_curvewise(
                                         SGT=SGT,
                                         DSG=DSG,
                                         AY=AY,
@@ -1061,7 +1079,9 @@ def gp_analysis(
                                         AXX=AXX,
                                         AYY=AYY,
                                         t_lab=t_lab,
+                                        t_lab_pts=np.array([5, 21, 48, 85, 133, 192]),
                                         degrees=degrees,
+                                        degrees_pts=np.array([26, 51, 77, 103, 129, 154]),
                                         Lambda_b_true=Lambdab,
                                         ls_true = None, 
                                         mpi_true=m_pi_eff,
