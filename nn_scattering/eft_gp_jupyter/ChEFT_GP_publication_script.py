@@ -896,6 +896,7 @@ def gp_analysis(
                                         ls_true = None, 
                                         mpi_true=m_pi_eff,
                                         whether_save=save_lambdapost_curvewise_bool,
+                                        orders=3,
                                     )
                                 if plot_plotzilla_bool:
                                     MyPlot.plotzilla(whether_save=save_plotzilla_bool)
@@ -1086,6 +1087,7 @@ def gp_analysis(
                                         ls_true = None, 
                                         mpi_true=m_pi_eff,
                                         whether_save=save_lambdapost_curvewise_bool,
+                                        orders=3,
                                     )
                                 if plot_plotzilla_bool:
                                     MyPlot.plotzilla(whether_save=save_plotzilla_bool)
